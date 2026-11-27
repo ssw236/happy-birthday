@@ -1090,11 +1090,11 @@ function goatLayers(a) {             // a: { blink, ear } animation state
     L_((x, y) => sdMin(sdC(x, y, -.36, -.42, -.36, -.71, .095), sdC(x, y, .32, -.42, .32, -.71, .095)), [.97, .9, .88]),   // near legs
     L_((x, y) => sdMin(sdE(x, y, -.36, -.74, .11, .055), sdE(x, y, .32, -.74, .11, .055)), hoof),                       // hooves
     L_((x, y) => sdE(x, y, .58, -.1, .05, .08), wool),                                                                 // little beard
+    L_((x, y) => sdE(x, y, .8, .36, .19, .085, -.55 - a.ear), [1, .88, .88]),                                         // near ear: the far ear mirrored, peeking out from behind her head
+    L_((x, y) => sdE(x, y, .86, .325, .1, .04, -.55 - a.ear), pink, null, null, false),
     L_((x, y) => sdE(x, y, .5, .2, .37, .33), face, [.5, .2, .37, .33]),                                              // head
     L_((x, y) => sdMin(sdE(x, y, .38, .46, .11, .09), sdE(x, y, .5, .5, .12, .09), sdE(x, y, .62, .46, .1, .08)), wool, [.5, .47, .2, .1], i => (HSH[i] < .2 ? 111 : -1)),   // fringe
     L_((x, y) => sdMin(sdC(x, y, .36, .5, .29, .67, .055), sdC(x, y, .29, .67, .19, .7, .04), sdC(x, y, .62, .52, .68, .68, .055), sdC(x, y, .68, .68, .78, .71, .04)), horn),   // tiny horns
-    L_((x, y) => sdE(x, y, .87, .28, .18, .07, -.35 - a.ear), [1, .86, .86]),                                         // near ear
-    L_((x, y) => sdE(x, y, .89, .28, .1, .035, -.35 - a.ear), pink, null, null, false),
     L_((x, y) => sdMin(sdE(x, y, .7, .56, .05, .05), sdE(x, y, .79, .56, .05, .05), sdE(x, y, .745, .61, .05, .05), sdE(x, y, .745, .51, .05, .05)), [1, .68, .82], null, null, false),   // a hydrangea floret
     L_((x, y) => sdE(x, y, .745, .56, .022, .022), [1, .92, .7], null, null, false),
     L_((x, y) => sdMin(sdE(x, y, .41, .2, .075, .095 * by), sdE(x, y, .63, .2, .075, .095 * by)), ink, null, null, false),                      // big eyes
