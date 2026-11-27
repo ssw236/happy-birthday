@@ -59,6 +59,17 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:3px}
 #final .zh{font-size:clamp(12px,.5vw + 10px,16px);margin:.15em 0 .35em}
 #final .b{margin-top:.35em;font-size:clamp(10px,.3vw + 9px,13px);color:var(--dim);letter-spacing:.08em}
 @media (prefers-reduced-motion: reduce){#open,#hint{animation:none}}
+/* the gift button and "watch again": rose glass with a soft gradient edge, a breathing glow and a slow shimmer */
+#open,#replay{color:#fff1f6;background:linear-gradient(180deg,#5a2645,#341429 55%,#220c1c) padding-box,linear-gradient(120deg,#ffd1e3,#ff8fb8 35%,#e3b0ff 65%,#ffd9c2) border-box;border:1.5px solid transparent;padding:.36em 1.6em .46em;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 8px 26px rgba(255,110,170,.26),0 0 40px rgba(255,140,185,.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:filter .25s ease}
+#open:hover,#replay:hover{background:linear-gradient(180deg,#6b2d53,#3e1831 55%,#280f21) padding-box,linear-gradient(120deg,#ffe0ec,#ff9cc2 35%,#ecc0ff 65%,#ffe2cf) border-box;filter:brightness(1.08)}
+#open:active,#replay:active{filter:brightness(.94)}
+#open::before,#replay::before{content:"";position:absolute;left:10%;right:10%;top:2px;height:42%;border-radius:999px;background:linear-gradient(rgba(255,255,255,.2),rgba(255,255,255,0));pointer-events:none}
+#open::after,#replay::after{content:"";position:absolute;top:-10%;bottom:-10%;left:-45%;width:30%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.32),transparent);transform:skewX(-18deg);animation:shine 4.2s ease-in-out infinite;pointer-events:none}
+@keyframes shine{0%,62%{left:-45%}92%,100%{left:125%}}
+@keyframes breathe{50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 10px 34px rgba(255,110,170,.42),0 0 58px rgba(255,140,185,.32)}}
+#open .zh,#replay .zh{color:#ffdbe9;letter-spacing:.32em;text-indent:.32em;margin-top:0}
+#open .zh::before,#replay .zh::before{content:"";display:block;width:2.6em;height:1px;margin:.2em auto .28em;background:linear-gradient(90deg,transparent,rgba(255,214,232,.85),transparent)}
+@media (prefers-reduced-motion: reduce){#open::after,#replay::after{animation:none;display:none}}
 </style>
 <div id="stage"><canvas id="cv" role="img" aria-label="Animated ASCII birthday card for Qi Xuan"></canvas></div>
 <div id="term" aria-live="polite"></div>
@@ -819,7 +830,7 @@ SCENES.push({
     const cw = Math.min(W * .62, H * .5), a1 = cw / 2, b1 = a1 * .2, h1 = cw * .27, base = H * .82;
     const yB1 = base - b1, yT1 = yB1 - h1, a2 = a1 * .68, b2 = a2 * .2, h2 = cw * .22, yB2 = yT1, yT2 = yB2 - h2;
     this.c = { cx: W / 2, cw, a1, b1, h1, yB1, yT1, a2, b2, h2, yB2, yT2, base };
-    this.date = textMask([{ text: '01.04', font: font(Math.round(h1 * .5)), x: W / 2, y: yT1 + b1 + h1 * .56 }]);
+    this.date = textMask([{ text: '01.04', font: font(Math.round(h1 * .62)), x: W / 2, y: yT1 + b1 + h1 * .56 }]);
     const r = rng(5);
     this.conf = Array.from({ length: Math.round(60 + W / 12) }, () => ({
       x: r() * W, sp: 25 + r() * 45, ph: r() * H * 1.3, sw: 8 + r() * 24, f: .6 + r() * 1.4,
@@ -878,7 +889,11 @@ SCENES.push({
       if (d < 1) { const I = .16 + .16 * (1 - d); R[i] = I * .9; G[i] = I * .85; B[i] = I; GL[i] = -1; }
     });
     this.tier(c.a1, c.b1, c.h1, c.yT1, c.yB1, false);
-    box(cx - c.a1, c.yT1, cx + c.a1, c.yB1 + c.b1, i => { if (this.date[i] > .35) { R[i] = 1; G[i] = .26; B[i] = .5; GL[i] = 35; } });
+    const dm = this.date;                              // the date piped in deep berry, ringed with white icing so it reads clearly on the cake
+    box(cx - c.a1, c.yT1, cx + c.a1, c.yB1 + c.b1, i => {
+      if (dm[i] > .35) { R[i] = .62; G[i] = .05; B[i] = .26; GL[i] = 35; return; }
+      if ((i > 0 && dm[i - 1] > .35) || (i + 1 < N && dm[i + 1] > .35) || (i >= COLS && dm[i - COLS] > .35) || (i + COLS < N && dm[i + COLS] > .35)) { R[i] = 1; G[i] = .92; B[i] = .95; GL[i] = 64; }
+    });
     this.tier(c.a2, c.b2, c.h2, c.yT2, c.yB2, true);
     const blow = 13.3, hc = c.cw * .14, hw = Math.max(CW * .55, c.cw * .011);
     this.candles.forEach((cd, n) => {
