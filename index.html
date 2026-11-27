@@ -2163,6 +2163,21 @@ SCENES.push({
 });
 
 /* ---------- scene 7: Sage (a slow orb spreads its ice, then a wall of huge ice blocks rises) ---------- */
+// the shape of Sage's slow field on the floor: 'floor' (ice edge to edge), 'round' (a neat ring with icy spikes),
+// 'splash' (frost fingers reaching out), or 'blob' (a soft uneven outline)
+let SLOW_SHAPE = 'floor';                            // chosen: ice over the whole floor, like in the game
+const SPLASH = (() => { const r = rng(515), n = 8; return Array.from({ length: n }, (_, k) => ({ a: (k + .5) / n * 6.2832 - Math.PI + (r() - .5) * .5, L: .2 + .28 * r(), w: .2 + .14 * r() })); })();
+const SPIKES = (() => { const r = rng(616), n = 34; return Array.from({ length: n }, (_, k) => ({ a: k / n * 6.2832 + (r() - .5) * .12, s: r(), dl: r() * .35 })); })();
+function slowEdge(pa) {                                // where the field ends at angle pa, in units of the ice ellipse
+  if (SLOW_SHAPE === 'floor') return 9;
+  if (SLOW_SHAPE === 'round') return .95;
+  if (SLOW_SHAPE === 'splash') {
+    let m = 0;
+    for (const fg of SPLASH) { let d = Math.abs(pa - fg.a); d = Math.min(d, 6.2832 - d); const k = Math.max(0, 1 - d / fg.w); m = Math.max(m, fg.L * k * k); }
+    return .6 + m + .05 * (noise(Math.cos(pa) * 2 + 3, Math.sin(pa) * 2 + 5) - .5);
+  }
+  return .72 + .28 * noise(Math.cos(pa) * 1.3 + 4, Math.sin(pa) * 1.3 + 8) + .1 * (noise(Math.cos(pa) * 3 + 11, Math.sin(pa) * 3 + 2) - .5);
+}
 SCENES.push({
   dur: 14, fadeIn: .01, glow: .85, bg0: [.004, .012, .014], bg1: [.01, .05, .044],
   caps: [{ at: 4.9, text: "you take care of everyone", zh: "你照顾着身边的每一个人" }, { at: 8.6, text: "let me take care of you", zh: "让我来照顾你" }],
@@ -2272,12 +2287,13 @@ SCENES.push({
     // differently, pale cracks between them, a brighter rim; it spreads from where the orb landed, lingers, then melts away
     if (spread > 0 && life > 0) {
       const NU = W < H ? 6.5 : 5.2, NV = W < H ? 3.4 : 2.3;   // fewer, taller pieces on wide screens, so they read as ice, not bricks
-      box(ic.x - ic.rx * 1.08, ic.y - ic.ry * 1.08, ic.x + ic.rx * 1.08, ic.y + ic.ry * 1.08, (i, px, py) => {
+      const FL = SLOW_SHAPE === 'floor';
+      box(FL ? 0 : ic.x - ic.rx * 1.12, FL ? base : ic.y - ic.ry * 1.12, FL ? W : ic.x + ic.rx * 1.12, FL ? H : ic.y + ic.ry * 1.12, (i, px, py) => {
         if (py < base + CH * .5) return;
         const u = (px - ic.x) / ic.rx, v = (py - ic.y) / ic.ry, rr = Math.hypot(u, v), pa = Math.atan2(v, u);
         // an organic outline that gently swells and dips (never a neat oval), spreading from where the orb landed
-        const edgeR = .72 + .28 * noise(Math.cos(pa) * 1.3 + 4, Math.sin(pa) * 1.3 + 8) + .1 * (noise(Math.cos(pa) * 3 + 11, Math.sin(pa) * 3 + 2) - .5);
-        const lim = Math.min(edgeR, spread * 1.05); if (rr > lim) return;
+        const edgeR = slowEdge(pa);
+        const lim = Math.min(edgeR, spread * (FL ? 2.4 : 1.05)); if (rr > lim) return;
         const X = u * NU, Y = v * NV, gx = Math.floor(X), gy = Math.floor(Y);
         let d1 = 99, d2 = 99, p1x = 0, p1y = 0, p2x = 0, p2y = 0, id = 0;
         for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {   // the nearest two crack centres (a Voronoi pattern)
@@ -2297,6 +2313,18 @@ SCENES.push({
         const al = life * feather, J = Math.min(1, I);
         R[i] += (cr * J - R[i]) * al; G[i] += (cg * J - G[i]) * al; B[i] += (cb * J - B[i]) * al; if (al > .45) GL[i] = ch;
       });
+      if (SLOW_SHAPE === 'round') {                    // a ring of crystal spikes around the rim, far ones first so the near ones stand in front
+        for (const sp of [...SPIKES].sort((p, q) => Math.sin(p.a) - Math.sin(q.a))) {
+          const rise = easeBack(clamp((t - ic.t0 - .6 - sp.dl) / .45)) * life; if (rise <= 0) continue;
+          const depth = .75 + .35 * (Math.sin(sp.a) + 1) / 2, bx = ic.x + Math.cos(sp.a) * ic.rx * .95, by = ic.y + Math.sin(sp.a) * ic.ry * .95;
+          const h = Math.max(CH * 3, ic.ry * (.22 + .2 * sp.s)) * depth * rise, hw = Math.max(CW * 2.2, ic.rx * (.035 + .02 * sp.s)) * depth;
+          box(bx - hw, by - h, bx + hw, by + CH * .3, (i, px, py) => {
+            const q = clamp((by - py) / h), half = hw * (1 - q); if (Math.abs(px - bx) > half) return;
+            if (Math.abs(px - bx) > half - CW * .6 && half > CW * 1.2) { R[i] = .02 * rise; G[i] = .32 * rise; B[i] = .3 * rise; GL[i] = 43; return; }
+            const k = 1 - q * .5; R[i] = (.6 + .3 * k) * rise; G[i] = rise; B[i] = (.92 + .08 * k) * rise; GL[i] = q > .6 ? 94 : 35;
+          });
+        }
+      }
       for (const sp of this.sparks) {                  // sparkles drifting up off the ice
         if (Math.hypot(sp.u, sp.v) > spread) continue;
         const q = (t * sp.sp + sp.off) % 1, fx = ic.x + sp.u * ic.rx + Math.sin(t * 2 + sp.ph) * CW, fy = ic.y + sp.v * ic.ry - q * H * .16, I = Math.sin(q * Math.PI) * life;
