@@ -8,7 +8,7 @@
 <title>Qi Xuan's Birthday</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Caveat:wght@500;600&family=JetBrains+Mono:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@1,700;1,800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Caveat:wght@500;600&family=ZCOOL+XiaoWei&family=JetBrains+Mono:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@1,700;1,800&display=swap">
 <style>
 /* Layout: one full-screen ASCII stage drawn in WebGL, a terminal caption strip, quiet controls in the corner */
 :root{
@@ -21,6 +21,7 @@
   --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --serif:"Playfair Display", Georgia, "Times New Roman", serif;
   --hand:"Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --zh:"ZCOOL XiaoWei", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   color-scheme: dark;
 }
 html,body{height:100%;background:var(--bg);overflow:hidden}
@@ -29,6 +30,8 @@ body{color:var(--ink);font-family:var(--mono);-webkit-tap-highlight-color:transp
 #cv{display:block;width:100%;height:100%}
 #term{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 6.5vh);padding-inline:max(20px,env(safe-area-inset-left,0px));text-align:center;font:500 clamp(23px,1.5vw + 15px,36px)/1.2 var(--hand);color:#ffe8f1;letter-spacing:.01em;pointer-events:none;opacity:0;text-shadow:0 0 18px rgba(255,140,185,.5),0 1px 3px rgba(0,0,0,.95)}
 #load{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);text-align:center;pointer-events:none;font:500 clamp(20px,1vw + 15px,28px) var(--hand);color:var(--ink);text-shadow:0 0 14px rgba(255,140,185,.55);white-space:nowrap}
+.zh{display:block;font-family:var(--zh);font-weight:400;font-size:.6em;letter-spacing:.14em;color:#f6cfe0;margin-top:.2em}
+#term .zh{font-size:.62em}
 #load .track{margin:.55em auto 0;width:min(52vw,240px);height:2px;border-radius:2px;background:rgba(255,186,212,.16);overflow:hidden}
 #load .track i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,#ff8fb8,#ffe3ee);box-shadow:0 0 10px #ff9cbf}
 #open{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);font:600 clamp(22px,1.3vw + 16px,32px) var(--hand);letter-spacing:.02em;color:#ffeaf2;background:rgba(255,150,190,.08);border:1px solid rgba(255,186,212,.4);border-radius:999px;padding:.3em 1.3em .38em;cursor:pointer;text-shadow:0 0 12px rgba(255,140,185,.7);animation:breathe 2.4s ease-in-out infinite;white-space:nowrap}
@@ -39,18 +42,31 @@ body{color:var(--ink);font-family:var(--mono);-webkit-tap-highlight-color:transp
 #ctl button{font:12px var(--mono);color:var(--dim);background:var(--panel);border:1px solid var(--edge);padding:6px 10px;cursor:pointer;letter-spacing:.04em}
 #ctl button:hover{color:var(--ink)}
 button:focus-visible{outline:2px solid var(--rose);outline-offset:3px}
-#final{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);padding-inline:max(16px,env(safe-area-inset-left,0px));text-align:center;pointer-events:none;opacity:0;transition:opacity 1.8s ease}
+#replay{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);transform:translateX(-50%);font:600 clamp(19px,1vw + 14px,26px) var(--hand);letter-spacing:.02em;color:#ffeaf2;background:rgba(255,150,190,.08);border:1px solid rgba(255,186,212,.4);border-radius:999px;padding:.25em 1.2em .32em;cursor:pointer;text-shadow:0 0 12px rgba(255,140,185,.7);white-space:nowrap;animation:fadein 1.4s ease both,breathe 2.4s ease-in-out 1.4s infinite}
+#replay:hover{background:rgba(255,150,190,.16)}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+#fly{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translateX(-50%);width:min(90vw,560px);box-sizing:border-box;padding:.65em 1.2em .75em;background:rgba(10,6,20,.55);border:1px solid rgba(255,186,212,.3);border-radius:14px;font:700 clamp(14px,1.1vw + 9px,21px) var(--mono);color:#ffe3ee;text-align:center;letter-spacing:.06em;text-shadow:0 0 10px rgba(255,140,185,.55);pointer-events:none}
+#fly .route{display:flex;justify-content:space-between;align-items:flex-start}
+#fly .route b{display:block;font-size:1.6em;letter-spacing:.05em;line-height:1.1}
+#fly .route small{display:block;font-size:.62em;font-weight:400;color:#d9a9bd;letter-spacing:.08em}
+#fly .track{position:relative;height:3px;margin:.75em .3em .6em;background:rgba(255,186,212,.18);border-radius:2px}
+#fly .track i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:2px;background:linear-gradient(90deg,#ff8fb8,#ffe3ee);box-shadow:0 0 8px #ff9cbf}
+#fly .track em{position:absolute;left:0;top:50%;transform:translate(-50%,-55%);font-style:normal;font-size:1.3em;color:#fff}
+#fly .info{font-size:.76em;font-weight:400;color:#f3c9da;letter-spacing:.05em}
+#final{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);padding-inline:max(16px,env(safe-area-inset-left,0px));text-align:center;pointer-events:none;opacity:0;transition:opacity 1.8s ease}
 #final.on{opacity:1}
 #final .a{font:italic 700 clamp(15px,1vw + 10px,22px) var(--serif);color:var(--ink);text-shadow:0 0 14px rgba(255,140,185,.65),0 1px 2px rgba(0,0,0,.9)}
+#final .zh{font-size:clamp(12px,.5vw + 10px,16px);margin:.15em 0 .35em}
 #final .b{margin-top:.35em;font-size:clamp(10px,.3vw + 9px,13px);color:var(--dim);letter-spacing:.08em}
 @media (prefers-reduced-motion: reduce){#open,#hint{animation:none}}
 </style>
 <div id="stage"><canvas id="cv" role="img" aria-label="Animated ASCII birthday card for Qi Xuan"></canvas></div>
 <div id="term" aria-live="polite"></div>
-<div id="load" hidden><div>a little something for you</div><div class="track"><i></i></div></div>
-<button id="open" type="button" hidden>open your gift &#9825;</button>
-<div id="ctl"><button id="replay" type="button" hidden>&#8634; replay</button></div>
-<div id="final"><div class="a">January 4 &middot; Toronto &rarr; Shanghai 上海 &middot; welcome home</div><div class="b">light pink hydrangeas, just for you</div></div>
+<div id="load" hidden><div>a little something for you</div><div class="zh">送你的一份小心意</div><div class="track"><i></i></div></div>
+<button id="open" type="button" hidden>open your gift &#9825;<span class="zh">打开你的礼物</span></button>
+<button id="replay" type="button" hidden>watch again &#8634;<span class="zh">再看一次</span></button>
+<div id="fly" hidden><div class="route"><div><b>YYZ</b><small>Toronto</small></div><div><b>PVG</b><small>Shanghai &#19978;&#28023;</small></div></div><div class="track"><i></i><em>&#9992;&#xFE0E;</em></div><div class="info"></div></div>
+<div id="final"><div class="a">January 4 &middot; Toronto &rarr; Shanghai 上海 &middot; welcome home</div><div class="zh">1月4日 · 多伦多 → 上海 · 欢迎回家</div><div class="b">light pink hydrangeas, just for you</div><div class="zh">浅粉色的绣球花，只送给你</div></div>
 <script>
 'use strict';
 /* =====================================================================
@@ -105,6 +121,7 @@ const NG = 95; // printable ASCII 32..126
 const stage = document.getElementById('stage'), cv = document.getElementById('cv');
 const term = document.getElementById('term'), openBtn = document.getElementById('open');
 const replayBtn = document.getElementById('replay'), finalEl = document.getElementById('final');
+const flyEl = document.getElementById('fly'), flyBar = flyEl.querySelector('.track i'), flyPlane = flyEl.querySelector('.track em'), flyInfo = flyEl.querySelector('.info');
 const loadEl = document.getElementById('load'), loadBar = loadEl.querySelector('i');
 
 // ---------- grid state ----------
@@ -352,7 +369,11 @@ function capsUpdate(t) {
   for (let k = 0; k < caps.length; k++) if (caps[k].at <= t) { c = caps[k]; next = caps[k + 1] || null; }
   if (!c) { term.style.opacity = 0; return; }
   const end = Math.min(next ? next.at - .3 : Infinity, c.at + (c.hold || 4.4));
-  if (capShown !== c) { term.textContent = c.text; capShown = c; }
+  if (capShown !== c) {                               // the English line, with the Mandarin just beneath it
+    term.textContent = ''; const en = document.createElement('div'); en.textContent = c.text; term.appendChild(en);
+    if (c.zh) { const zh = document.createElement('div'); zh.className = 'zh'; zh.textContent = c.zh; term.appendChild(zh); }
+    capShown = c;
+  }
   term.style.opacity = (clamp((t - c.at) / .9) * clamp((end - t) / .9)).toFixed(3);
 }
 
@@ -444,9 +465,9 @@ const bgA = [.02, .01, .024], bgB = [.03, .012, .03];
 function ui() {
   const sc = SCENES[si];
   if (si > 0) opened = true;
-  openBtn.hidden = true;
+  openBtn.hidden = true; flyEl.hidden = true;
   if (!sc.boot) loadEl.hidden = true;
-  replayBtn.hidden = !sc.final;
+  replayBtn.hidden = true;                             // it appears near the end, after the last words
 }
 function go(k) {
   const cur = SCENES[si]; if (cur && cur.exit) cur.exit();
@@ -476,6 +497,7 @@ function frame(now) {
   for (let c = 0; c < 3; c++) { bgA[c] += (b0[c] - bgA[c]) * k; bgB[c] += (b1[c] - bgB[c]) * k; }
   capsUpdate(st);
   finalEl.classList.toggle('on', !!sc.final && st > 10.8);
+  if (sc.final && st > 12.2 && replayBtn.hidden) replayBtn.hidden = false;
   renderer.draw(bgA, bgB, sc.glow === undefined ? .6 : sc.glow);
 }
 // browsers only allow sound after a tap or key press, so the first one anywhere turns it on
@@ -559,7 +581,7 @@ function drawFlower(o, t) {
   let curId = 0;
   const cyw = Math.cos(o.yaw), syw = Math.sin(o.yaw), cp = Math.cos(o.pitch), sp = Math.sin(o.pitch);
   const rot = (x, y, z) => { const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw; return [x1, y * cp - z1 * sp, y * sp + z1 * cp]; };
-  const st = Math.max(.012, Math.min(CW, CH) * .4 / o.R), L = [-.38, .72, .58];
+  const st = Math.max(.008, Math.min(CW, CH) * .32 / o.R), L = [-.38, .72, .58];
   let x0 = COLS, x1 = -1, y0 = ROWS, y1 = -1;
   const plot = (P, r, g, b, ch, kk, core) => {
     const X = P[0], Y = P[1];
@@ -590,13 +612,13 @@ function drawFlower(o, t) {
       const len = ly.len * (.92 + .12 * hash(l * 31 + j * 3.1)), lean = (hash(l * 7 + j * 2.3) - .5) * .16 * o.open, pv = .86 + .22 * hash(l * 13 + j * 7.3);
       for (let s = ds; s <= 1; s += ds) {
         const a = tilt + lean + ly.curl * s * s * o.open, sa = Math.sin(a), ca = Math.cos(a);    // the rim rolls outward as it opens
-        const half = Math.pow(Math.sin(Math.PI * Math.pow(s, .72)), .55) * (.3 + .7 * Math.min(1, s / .4)) * ly.wd * len, dw = Math.max(.045, st / Math.max(half, .02));
+        const half = Math.pow(Math.sin(Math.PI * Math.pow(s, .72)), .55) * (.3 + .7 * Math.min(1, s / .4)) * ly.wd * len, dw = Math.max(.03, st / Math.max(half, .02));
         const c0x = sa * cph * s * len, c0y = ca * s * len - .1, c0z = sa * sph * s * len, nx = ca * cph, ny = -sa, nz = ca * sph;
         for (let w = -1; w <= 1.0001; w += dw) {
           const aw = Math.abs(w), cup = w * w * kc, gr = clamp(2 * kc * w / Math.max(half, .06), -2.5, 2.5);
           const P = rot(c0x + sx * w * half - nx * cup, c0y - ny * cup, c0z + sz * w * half - nz * cup);
-          const nv = rot(nx + sx * gr, ny, nz + sz * gr), nl = Math.hypot(nv[0], nv[1], nv[2]), sg = nv[2] < 0 ? -1 / nl : 1 / nl;
-          const lam = Math.max(0, (nv[0] * L[0] + nv[1] * L[1] + nv[2] * L[2]) * sg);
+          const nv = rot(nx + sx * gr, ny, nz + sz * gr), nl = Math.hypot(nv[0], nv[1], nv[2]);
+          const lam = Math.abs(nv[0] * L[0] + nv[1] * L[1] + nv[2] * L[2]) / nl;   // lit on both sides, so nothing flips as a petal turns past edge-on
           // colour: a dark heart, dark spokes along each midrib, warm pink body, pale tips with white highlights
           const heart = 1 - smooth(.12, .4, s), spoke = (1 - smooth(.1, .26, aw)) * (1 - smooth(.35, .72, s)) * smooth(0, .3, o.open);
           let r = .97, g = .36 + .34 * s * s, b = .62 + .2 * s * s;
@@ -612,6 +634,13 @@ function drawFlower(o, t) {
       }
     }
   });
+  for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {   // close single-cell pinholes where a petal is seen edge-on
+    const i = y * COLS + x; if (FLZ[i] > -1e8) continue;
+    let a = -1, b = -1;
+    if (FLZ[i - 1] > -1e8 && FLZ[i + 1] > -1e8) { a = i - 1; b = i + 1; } else if (FLZ[i - COLS] > -1e8 && FLZ[i + COLS] > -1e8) { a = i - COLS; b = i + COLS; }
+    if (a < 0) continue;
+    R[i] = (R[a] + R[b]) / 2; G[i] = (G[a] + G[b]) / 2; B[i] = (B[a] + B[b]) / 2; GL[i] = GL[a] === 42 ? -1 : GL[a]; FLZ[i] = Math.min(FLZ[a], FLZ[b]); FLID[i] = FLID[a];
+  }
   if (o.open > .1) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {   // a thin shadow line wherever one petal lies over another
     const i = y * COLS + x, z = FLZ[i]; if (z < -1e8) continue;
     let gap = 0;
@@ -662,7 +691,7 @@ const NAMEFONT = s => `${s}px Pacifico, "Brush Script MT", ${SERIF}`;
 function heartIn(qx, qy) { const a = qx * qx + qy * qy - 1; return a * a * a - qx * qx * qy * qy * qy < 0; }
 SCENES.push({
   dur: 10.5, glow: .7, bg0: [.02, .008, .022], bg1: [.045, .012, .036],
-  caps: [{ at: 4.6, text: "happy birthday, my love" }],
+  caps: [{ at: 4.6, text: "happy birthday, my love", zh: "生日快乐，亲爱的" }],
   cues: [[.15, () => playBars(THEME_A, 0, .64, .5)], [.6, () => sparkle(0, 2.2, 5, .15)]],
   init() {
     let items, lineY;
@@ -778,7 +807,7 @@ function melody(beat = .5) {
 
 SCENES.push({
   dur: 15.5, glow: .72, bg0: [.03, .01, .028], bg1: [.055, .016, .04],
-  caps: [{ at: 0.8, text: "make a wish" }, { at: 13.6, text: "i hope every one of them comes true" }],
+  caps: [{ at: 0.8, text: "make a wish", zh: "许个愿吧" }, { at: 13.6, text: "i hope every one of them comes true", zh: "愿你的每一个愿望都成真" }],
   cues: [[.8, () => melody()], [13.4, () => roll([65, 69, 72, 77, 81, 84], 0, .09, .36)], [14.1, () => sparkle(0, 1, 4, .15)]],
   init() {
     const portrait = W < H * .95, font = s => `${s}px ${BLACK}`;
@@ -1041,7 +1070,7 @@ const heartPt = (a, s) => [16 * Math.pow(Math.sin(a), 3) / 17 * s, -(13 * Math.c
 
 SCENES.push({
   dur: 13, glow: .8, bg0: [.008, .008, .035], bg1: [.03, .012, .05],
-  caps: [{ at: 6, text: "you, my little capricorn" }, { at: 9.4, text: "and me, right beside you" }],
+  caps: [{ at: 6, text: "you, my little capricorn", zh: "你，我的小摩羯" }, { at: 9.4, text: "and me, right beside you", zh: "而我，一直在你身边" }],
   cues: [[.15, () => playBars([['Dm'], ['Bb'], THEME_B[0], THEME_B[1]], 0, .8, .44)], [9.6, () => sparkle(0, 1, 4, .15)]]
     .concat(CAP.filter((s, k) => k % 2 === 0).map((s, k) => [1.2 + k * .4, () => piano([77, 81, 84, 86, 89, 91][k % 6], 0, .17, 2.4)]))
     .concat(CNC.map((s, k) => [3.0 + k * .22, () => piano([79, 84, 86, 91, 93][k], 0, .14, 2.4)])),
@@ -1056,8 +1085,8 @@ SCENES.push({
     // her little goat on the left (top on a phone), his crab on the right (bottom on a phone), a heart between
     const gs = P ? Math.min(W * .78 / 1.92, H * .3 / 1.62) : Math.min(W * .4 / 1.92, H * .6 / 1.62);
     const cs = P ? Math.min(W * .62 / 2.12, H * .22 / 1.5) : Math.min(W * .3 / 2.12, H * .46 / 1.5);
-    const g = this.goat = { x: P ? W * .46 : W * .22, y: P ? H * .27 : H * .52, s: gs, bx: GOAT_BOX };
-    const c = this.crabF = { x: P ? W * .5 : W * .79, y: P ? H * .73 : H * .56, s: cs, bx: CRAB_BOX };
+    const g = this.goat = { x: P ? W * .46 : W * .2, y: P ? H * .27 : H * .52, s: gs, bx: GOAT_BOX };
+    const c = this.crabF = { x: P ? W * .5 : W * .81, y: P ? H * .73 : H * .56, s: cs, bx: CRAB_BOX };
     const capR = [g.x + GOAT_BOX[0] * gs, g.x + GOAT_BOX[1] * gs, g.y - GOAT_BOX[3] * gs, g.y - GOAT_BOX[2] * gs];
     const cncR = [c.x + CRAB_BOX[0] * cs, c.x + CRAB_BOX[1] * cs, c.y - CRAB_BOX[3] * cs, c.y - CRAB_BOX[2] * cs];
     const fit = (R2, bx) => { const s = Math.min((R2[1] - R2[0]) / (bx[1] - bx[0]), (R2[3] - R2[2]) / (bx[3] - bx[2])); return { s, mx: (bx[0] + bx[1]) / 2, my: (bx[2] + bx[3]) / 2, cx: (R2[0] + R2[1]) / 2, cy: (R2[2] + R2[3]) / 2 }; };
@@ -1068,7 +1097,7 @@ SCENES.push({
     this.bee = toS(G2, M44);
     this.revA = capR[1] + CW * 3; this.revB = capR[0] - CW * 3;
     this.crabTop = cncR[2] - CH * 3; this.crabBot = cncR[3] + CH * 3;
-    this.hc = P ? [W * .5, H * .5] : [W * .52, H * .42]; this.hs = P ? Math.min(W, H) * .085 : Math.min(W * .045, H * .08);
+    this.hc = P ? [W * .5, H * .5] : [W * .52, H * .42]; this.hs = P ? Math.min(W, H) * .14 : Math.min(W * .07, H * .125);
   },
   draw(t) {
     const fa = smooth(5.4, 7.6, t), fc = smooth(6.4, 8.0, t), mwk = 1 - .8 * fa, G1 = this.G1;
@@ -1221,7 +1250,7 @@ function blob(L, xc, yc, rx, ry, kind, r, g, b) {
 /* ---------- scene 4: Toronto, where she studies: the skyline from the islands on a snowy night ---------- */
 SCENES.push({
   dur: 12.5, glow: .8, bg0: [.01, .016, .055], bg1: [.06, .05, .1],
-  caps: [{ at: 1, text: "far from home, chasing your dreams" }, { at: 8.6, text: "but this time, you’re going home" }],
+  caps: [{ at: 1, text: "far from home, chasing your dreams", zh: "离家很远，追逐着你的梦想" }, { at: 8.6, text: "but this time, you’re going home", zh: "但这一次，你要回家了" }],
   cues: [[.1, () => playBars([['Am', [[76, 0, 1], [72, 1, 1], [69, 2, 2]]], ['F', [[72, 0, 1], [69, 1, 1], [65, 2, 2]]], ['C', [[67, 0, 1], [72, 1, 1], [76, 2, 2]]], ['Dm', [[74, 0, 2], [72, 2, 2]]]], 0, .78, .44)]]
     .concat(Array.from({ length: 5 }, (_, k) => [4.6 + k * 1.4, () => piano(TWINK[(k * 2 + 1) % TWINK.length], 0, .13, 2.4)])),
   init() {
@@ -1381,7 +1410,7 @@ const padTo = (s, n) => (s.length >= n ? s.slice(0, n) : s + ' '.repeat(n - s.le
 
 SCENES.push({
   dur: 12.5, glow: .8, bg0: [.01, .014, .055], bg1: [.06, .035, .1],
-  caps: [{ at: 1.4, text: "the long way home" }, { at: 8.4, text: "almost there" }],
+  caps: [{ at: 1.4, text: "the long way home", zh: "漫长的回家路" }, { at: 8.4, text: "almost there", zh: "快到了" }],
   cues: [[.25, () => { piano(81, 0, .3, 2.6); piano(77, .55, .3, 3); }], [1.4, () => playBars([['Bb', [[77, 0, 2], [74, 2, 2]]], ['C', [[76, 0, 2], [72, 2, 2]]], ['Dm', [[74, 0, 1], [72, 1, 1], [69, 2, 2]]], ['F', [[72, 0, 4]]]], 0, .7, .42)]],
   init() {
     const r = rng(1504);
@@ -1418,8 +1447,8 @@ SCENES.push({
     for (const p of this.puffs) if (!p.front) this.puff(p, t, false);
     const dl = W * .47 + (7.2 - t) * W * .42;                      // the date line slides past at 180 degrees
     if (dl > -CW * 20 && dl < W + CW * 20) {
-      for (let y = H * .2; y < cloudTop + H * .05; y += CH * 2) put(dl, y, .35, .75, .9, 124);
-      textAt(dl, H * .17, '180', .5, .9, 1, 'center'); textAt(dl, H * .17 + CH, 'DATE LINE', .5, .9, 1, 'center');
+      for (let y = H * .32; y < cloudTop + H * .05; y += CH * 2) put(dl, y, .35, .75, .9, 124);
+      textAt(dl, H * .28, '180', .5, .9, 1, 'center'); textAt(dl, H * .28 + CH, 'DATE LINE', .5, .9, 1, 'center');
     }
     const Lp = Math.min(W * (W < H ? .84 : .5), H * .95), exit = Math.pow(clamp((t - 10.6) / 1.6), 2);
     const pcx = W * (W < H ? .52 : .46) + exit * W * .75, pcy = H * .45 - exit * H * .12, ang = .1 * exit;
@@ -1430,15 +1459,11 @@ SCENES.push({
     }
     drawPlane(pcx, pcy, Lp, ang, t);
     for (const p of this.puffs) if (p.front) this.puff(p, t, true);
-    // flight board with live numbers
-    const Wd = Math.max(18, Math.min(48, COLS - 4)), inner = Wd - 4, dist = Math.round(11400 * (1 - f)), tz = -5 - 11 * f, tzd = Math.round(tz < -12 ? tz + 24 : tz);
-    const barW = inner - 10, k = Math.round(f * (barW - 1));
-    const rows = ['+' + '-'.repeat(Wd - 2) + '+',
-      '| ' + padTo('TORONTO YYZ   >>   SHANGHAI PVG', inner) + ' |',
-      '| ' + padTo('DIST ' + dist.toLocaleString('en-US').padStart(6) + ' KM  ALT 11,000 M  UTC' + (tzd >= 0 ? '+' : '') + tzd, inner) + ' |',
-      '| ' + padTo('YYZ [' + '='.repeat(k) + '>' + ' '.repeat(Math.max(0, barW - 1 - k)) + '] PVG', inner) + ' |',
-      '+' + '-'.repeat(Wd - 2) + '+'];
-    rows.forEach((s, j) => textAt(W / 2, H * .055 + j * CH, s, 1, .78, .88, 'center'));
+    // the flight panel above the plane: the route, a progress bar with a little plane on it, and live numbers
+    const dist = Math.round(11400 * (1 - f)), tz = -5 - 11 * f, tzd = Math.round(tz < -12 ? tz + 24 : tz);
+    flyEl.hidden = false; flyBar.style.width = (f * 100).toFixed(1) + '%'; flyPlane.style.left = (f * 100).toFixed(1) + '%';
+    const info = dist.toLocaleString('en-US') + ' km to go \u00b7 11,000 m \u00b7 UTC' + (tzd >= 0 ? '+' : '') + tzd;
+    if (flyInfo.textContent !== info) flyInfo.textContent = info;
   }
 });
 
@@ -1499,7 +1524,7 @@ const FW = Array.from({ length: 10 }, (_, k) => ({
 }));
 SCENES.push({
   dur: 13, glow: .85, bg0: [.012, .01, .045], bg1: [.1, .035, .1],
-  caps: [{ at: 1.2, text: "welcome home, birthday girl" }, { at: 8.4, text: "the whole city lights up for you" }],
+  caps: [{ at: 1.2, text: "welcome home, birthday girl", zh: "欢迎回家，小寿星" }, { at: 8.4, text: "the whole city lights up for you", zh: "整座城市都为你亮起" }],
   cues: [[.15, () => playBars(SH_MEL.map((m, k) => [['F', 'Dm', 'Bb', 'C'][k], m.map(([n, b]) => [n, b, .5])]), 0, .8, .44)]]
     .concat(FW.map(f => [f.t, () => piano(TWINK[Math.floor(hash(f.t * 7) * TWINK.length)], 0, .15, 2.6)])),
   init() {
@@ -1780,7 +1805,7 @@ function chrysHalf(v) { const vm = .18, x = v > vm ? (v - vm) / (1 - vm) : (vm -
 function chrysalisAt(c, h, u, v) { return [c.x + u * h * .36 * chrysHalf(v), c.y - v * h]; }
 SCENES.push({
   dur: 13, fadeOut: .01, glow: .9, bg0: [.008, .004, .02], bg1: [.025, .01, .04],
-  caps: [{ at: 6.8, text: "may all your dreams be this soft" }],
+  caps: [{ at: 6.8, text: "may all your dreams be this soft", zh: "愿你的梦都这样温柔" }],
   cues: [[.15, () => playBars([['Dm'], ['Bb'], THEME_A[0], THEME_A[3]], 0, .8, .42)], [.4, () => piano(96, 0, .13, 2.6)],
     [3.0, () => roll([84, 86, 89, 91, 93, 96], 0, .07, .15)], [3.9, () => sparkle(0, 1.4, 7, .13)], [4.7, () => roll([65, 69, 72, 77, 81, 84], 0, .07, .26)],
     [9.1, () => sparkle(0, 1.2, 4, .13)], [10.5, () => roll([72, 77, 81, 84, 89, 93], 0, .09, .2)], [12.1, () => sparkle(0, .8, 5, .13)]],
@@ -1853,25 +1878,24 @@ SCENES.push({
 
 /* ---------- scene 7: Sage (a slow orb spreads its ice, then a wall of huge ice blocks rises) ---------- */
 SCENES.push({
-  dur: 12.5, fadeIn: .01, glow: .85, bg0: [.006, .02, .024], bg1: [.012, .05, .046],
-  caps: [{ at: 4.9, text: "you take care of everyone" }, { at: 8.6, text: "let me take care of you" }],
+  dur: 12.5, fadeIn: .01, glow: .85, bg0: [.004, .012, .014], bg1: [.01, .05, .044],
+  caps: [{ at: 4.9, text: "you take care of everyone", zh: "你照顾着身边的每一个人" }, { at: 8.6, text: "let me take care of you", zh: "让我来照顾你" }],
   cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [1.0, () => roll([70, 74, 77, 82, 86], 0, .06, .2)], [2.5, () => roll([96, 93, 89, 86, 84, 81], 0, .05, .2)], [3.5, () => roll([46, 53, 58, 62, 65], 0, .08, .3)]]
     .concat([5.2, 6.8, 8.4, 10].map((x, k) => [x, () => piano(k % 2 ? 89 : 86, 0, .13, 2.4)])),
   init() {
     const r = rng(77), P = W < H;
-    // a row of glowing jade ice blocks standing on a dark floor
-    const nB = 3, Wt = Math.min(W * (P ? .94 : .86), H * 1.9), bw = Wt / nB, bh = bw * (P ? 1.55 : 1.2), x0 = (W - Wt) / 2;
-    this.wall = { nB, bw, bh, x0, base: H * (P ? .6 : .7), top: bw * .09, side: bw * .1 };
-    this.blocks = Array.from({ length: nB }, (_, k) => ({ x: x0 + k * bw, d: Math.abs(k - (nB - 1) / 2) * .16, s: r() * 9 }));
-    this.horizon = H * (P ? .52 : .57);
-    this.orb = { x: W / 2, y: H * (P ? .25 : .2), r: Math.min(W, H) * (P ? .17 : .12) };
+    // three ice blocks, centred, standing on a dark glassy floor that mirrors them
+    const nB = 3, Wt = Math.min(W * (P ? .9 : .64), H * 1.25), bw = Wt / nB, bh = bw * (P ? 1.4 : 1.05), x0 = (W - Wt) / 2;
+    this.wall = { nB, bw, bh, x0, base: H * (P ? .58 : .63), top: bw * .08 };
+    this.blocks = Array.from({ length: nB }, (_, k) => ({ x: x0 + k * bw, d: Math.abs(k - (nB - 1) / 2) * .14, s: r() * 9 }));
+    this.orb = { x: W / 2, y: H * (P ? .24 : .22), r: Math.min(W, H) * (P ? .15 : .11) };
     this.orbit = Array.from({ length: 56 }, (_, k) => ({ a: (k >> 1) / 28 * 6.283, ring: k % 2 }));
-    this.rise = Array.from({ length: 26 }, () => ({ x: r(), sp: .05 + r() * .08, ph: r(), sw: r() * 6.28 }));
-    // where the orb lands, and the frost it spreads across the floor
-    this.ice = { x: W / 2, y: H * (P ? .74 : .83), rx: W * (P ? .68 : .62), ry: H * (P ? .14 : .1), t0: 2.5 };
+    // the slow orb lands in front of the wall; its frost spreads as a six-armed snowflake etched into the ice
+    const fl = this.wall.base;
+    this.ice = { x: W / 2, y: fl + (H - fl) * .45, rx: W * (P ? .5 : .42), ry: (H - fl) * .42, t0: 2.5 };
+    this.snow = Array.from({ length: 46 }, () => ({ x: r() * W, y0: r() * H, sp: H * (.03 + r() * .04), sw: r() * 6.28, m: r() }));
   },
   drawOrb(t, cx, cy, rr, s, ringA) {
-    const o = this.orb;
     const rings = front => {                           // two thin tilted rings of sparkles; the far half passes behind the orb
       if (ringA <= 0) return;
       for (const p of this.orbit) {
@@ -1892,105 +1916,109 @@ SCENES.push({
       if (d > .9) L = Math.max(L, 1);
       R[i] = L * .3 + spec + core * .35; G[i] = L * .98 + spec; B[i] = L * .78 + spec + core * .2; GL[i] = spec > .5 ? 64 : -1;
     });
-    for (let k = 0; k < 7; k++) {
-      const a = k * .9 + t * (k % 2 ? .7 : -.5), d = (.25 + .5 * hash(k + 3)) * rr, I = .55 + .45 * Math.sin(t * 4 + k * 2);
-      put(cx + Math.cos(a) * d, cy + Math.sin(a) * d * .9, I, I, I, 43);
-    }
     rings(true);
   },
-  draw(t) {
-    const wl = this.wall, base = wl.base, hz = this.horizon, ic = this.ice;
-    for (const p of this.rise) {                       // soft healing motes drifting upward
-      const y = H - ((t * p.sp * H + p.ph * H) % (H * .9)), I = .22 * (1 - (H - y) / (H * .9)) * (1 + 2 * smooth(this.ice.t0, this.ice.t0 + 1.5, t));   // brighter once the frost sends up glints
-      put(p.x * W + Math.sin(t * 1.4 + p.sw) * CW * 2, y, I * .5, I, I * .8, 43);
+  // the snowflake etched into the ice: distance (in field units) to the nearest arm or side branch
+  flake(u, v) {
+    const r = Math.sqrt(u * u + v * v); if (r < 1e-4) return 0;
+    let a = Math.atan2(v, u); const sec = Math.PI / 3; a = ((a % sec) + sec) % sec - sec / 2;   // fold into one arm
+    const x = r * Math.cos(a), y = Math.abs(r * Math.sin(a));
+    let d = y;                                         // the arm itself
+    for (let k = 1; k <= 4; k++) {                     // side branches leaning outward at 60 degrees, shorter toward the tip
+      const x0 = k * .19, L = .2 * (1 - x0 * .75); if (x < x0) continue;
+      const t2 = clamp(((x - x0) * .5 + y * .866) / L), bx = x0 + t2 * L * .5, by = t2 * L * .866;
+      d = Math.min(d, Math.hypot(x - bx, y - by));
     }
-    // the floor: dark green, lit by the blocks; later the orb's frost spreads across it
-    const wallUp = smooth(3.5, 4.6, t), spread = easeOut((t - ic.t0) / .85), life = 1 - smooth(11.4, 12.4, t), pulse = Math.exp(-Math.max(0, t - ic.t0) * 2.5) * (t > ic.t0 ? 1 : 0);
-    box(0, hz, W, H, (i, px, py) => {
-      const depth = (py - hz) / (H - hz);
-      let L = (.015 + .02 * noise(px * .03, py * .09)) * (.4 + .6 * depth), r = L * .35, g = L, b = L * .8, ch = -1;
-      const under = clamp(1 - Math.max(0, Math.abs(px - W / 2) - wl.nB * wl.bw / 2) / (wl.bw * .6));   // the blocks' glow on the floor
-      if (py > base - CH) { const gl = wallUp * under * Math.exp(-(py - base) / (H * .035)) * .3 * (.75 + .25 * noise(px * .02, t)); r += gl * .35; g += gl; b += gl * .82; }
-      if (spread > 0) {                                // frost: a widening ellipse of ice with cracks running out from where the orb landed
-        const ex = (px - ic.x) / (ic.rx * spread), ey = (py - ic.y) / (ic.ry * spread), q = Math.sqrt(ex * ex + ey * ey);
-        if (q < 1 && life > 0) {
-          const a = Math.atan2(ey, ex), n = fbm(px / S * 3.5, py / S * 7, 3);
-          let I = .2 + .34 * n + .32 * smooth(.8, 1, q) + .6 * pulse * (1 - q);
-          ch = -1;
-          if (Math.abs(Math.sin(a * 7 + n * 5)) < .07 + .05 * (1 - q)) { I = .8 + .2 * (1 - q); ch = Math.abs(ex) > Math.abs(ey) * 2.5 ? 45 : (ex * ey > 0 ? 92 : 47); }   // cracks
-          else if (Math.abs(Math.sin(q * 15 - n * 3)) < .06) { I += .14; ch = 126; }                                                          // frost rings
-          if ((q > .94 && hash(i + Math.floor(t * 8) * 3.3) < .3) || hash(i * 1.3 + Math.floor(t * 3)) < .012) { I = 1; ch = 42; }                                                            // the glittering edge
-          I *= life; r = I * (.5 + .25 * (1 - q)); g = I; b = I * .95;
-        }
-      }
-      if (r + g + b > .02) { R[i] = r; G[i] = g; B[i] = b; GL[i] = ch; }
-    });
-    // the ice blocks, each rising out of the floor (the middle one first), cloudy jade ice, brightest at the top
+    const ring = Math.abs(r - .33), hexR = Math.abs(r * Math.cos(a) - .62);   // a small ring and a hexagon
+    return Math.min(d, ring * 1.4, hexR * 1.6);
+  },
+  draw(t) {
+    const wl = this.wall, base = wl.base, ic = this.ice, baseRow = Math.round(cy_(base));
+    const spread = easeOut((t - ic.t0) / 1.1), life = 1 - smooth(11.4, 12.4, t);
+    for (const f of this.snow) {                       // slow snowflakes; inside the field they drift almost to a stop
+      let y = (f.y0 + t * f.sp) % (H * 1.05);
+      if (spread > 0 && y > base) y = base + (y - base) * (1 - .75 * spread);
+      const I = (.18 + .3 * f.m) * (y > base ? .7 : 1);
+      put(f.x + Math.sin(t * .6 + f.sw) * CW * 2, y, I * .7, I, I * .95, f.m > .7 ? 42 : 46);
+    }
+    // the ice blocks rise once the field has spread: cloudy jade ice, bright bevelled tops, seams between them
     this.blocks.forEach((bk, k) => {
       const e = easeBack((t - 3.5 - bk.d) / .9); if (e <= 0) return;
-      const bh = wl.bh * Math.min(1.04, e), yT = base - bh, last = k === wl.nB - 1, tp = wl.top, sd = wl.side;
-      box(bk.x, yT - tp, bk.x + wl.bw + (last ? sd : 0), base, (i, px, py) => {
-        let u = (px - bk.x) / wl.bw, v = (py - yT) / wl.bh, face = 0;
-        if (py < yT) {                                  // the top: a bright slanted strip
-          const k2 = (yT - py) / tp; if (u < k2 * .1 || u > 1 + k2 * .1 || k2 > 1) return; face = 1;
-        } else if (u > 1) {                             // the right side of the last block, in shade
-          const k2 = (u - 1) * wl.bw / sd; if (k2 > 1 || py < yT - k2 * tp || py > base - k2 * tp * .2) return; face = 2;
+      const bh = wl.bh * Math.min(1.04, e), yT = base - bh, tp = wl.top;
+      box(bk.x, yT - tp, bk.x + wl.bw, base, (i, px, py) => {
+        const u = (px - bk.x) / wl.bw, v = (py - yT) / wl.bh, vv = clamp(v);
+        let L, glyph = -1;
+        if (py < yT) {                                 // the bevelled top
+          const k2 = (yT - py) / tp; if (u < k2 * .06 || u > 1 - k2 * .06) return;
+          L = .95 - .25 * k2;
+        } else {
+          const n = fbm(u * 2.8 + bk.s, v * 2.6, 3), cl = smooth(.48, .72, fbm(u * 1.5 + bk.s * 2, v * 1.8 + 5, 2));
+          const glow = Math.exp(-((u - .5) * (u - .5) * 5 + (v - .38) * (v - .38) * 4));    // light held in the middle of the ice
+          L = (.22 + .34 * (1 - vv)) * (.6 + .7 * n) + .3 * cl * (1 - .6 * vv) + .22 * glow;
+          const edge = Math.min(u, 1 - u) * wl.bw / CW;
+          if (edge < 1) L = .2;                        // a dark seam between blocks
+          else if (edge < 2) L = Math.max(L, .75);     // and a bright rim beside it
+          // glyphs chosen with a touch of noise so the ice looks cloudy rather than striped
+          const gi = Math.floor(clamp(L * .95 + (hash(i * 1.7) - .5) * .22) * 7.99);
+          glyph = [46, 58, 43, 42, 111, 37, 35, 64][gi];
         }
-        const vv = clamp(v), n = fbm(u * 3 + bk.s, v * 3.2, 3), m = .5 + .5 * Math.sin((u * 1.7 - v * 1.1) * 9 + n * 6 + t * .3);
-        const cl = smooth(.5, .72, fbm(u * 1.6 + bk.s * 2, v * 2 + 5, 2)) * (1 - vv);
-        let L = (.26 + .42 * Math.pow(1 - vv, 1.3)) * (.45 + .85 * n) + .26 * m * m * (1 - .6 * vv) + .38 * cl;
-        if (face === 1) L = .9 + .15 * n; else if (face === 2) L *= .5;
-        const edge = Math.min(u * wl.bw, (1 - u) * wl.bw, (py - yT)) / CW;
-        if (face === 0 && edge < 1.2) L = Math.max(L * .55, py - yT < CH * 1.2 ? 1 : 0);   // a dark seam at the sides, a bright rim along the top
-        if (hash(i + Math.floor(t * 5) * 7.1) < .004) L = 1.2;
-        const top = clamp(1 - v); L *= Math.min(1, e * 1.3);
-        R[i] = L * (.12 + .6 * top); G[i] = L * (.62 + .38 * top); B[i] = L * (.55 + .4 * top); GL[i] = -1;
+        if (hash(i + Math.floor(t * 4) * 7.1) < .003) { L = 1.2; glyph = 42; }
+        const top = 1 - vv; L *= Math.min(1, e * 1.3);
+        R[i] = L * (.14 + .6 * top); G[i] = L * (.66 + .34 * top); B[i] = L * (.58 + .36 * top); GL[i] = glyph;
       });
     });
+    // the floor mirrors everything above it, rippling faintly, fading with distance
+    const rows = ROWS - baseRow - 1;
+    for (let dy = 1; dy <= rows; dy++) {
+      const src = baseRow - dy, dst = baseRow + dy; if (src < 0 || dst >= ROWS) continue;
+      const k = .3 * Math.pow(1 - dy / (rows + 1), 1.4);
+      for (let x = 0; x < COLS; x++) {
+        const sx = clamp(x + Math.round(Math.sin(dy * .7 + t * 1.6) * .6), 0, COLS - 1), j = src * COLS + sx, i = dst * COLS + x;
+        if (R[j] + G[j] + B[j] < .05) continue;
+        R[i] = R[j] * k; G[i] = G[j] * k; B[i] = B[j] * k; GL[i] = GL[j] === 64 || GL[j] === 35 ? 58 : 46;
+      }
+    }
+    for (let x = 0; x < W; x += CW) { const I = .16 + .06 * Math.sin(x * .03 - t); put(x, base + CH * .2, I * .4, I, I * .85, 95); }   // the floor's edge
+    // the slow orb's frost: a snowflake spreading out from where it landed, softly glowing, lingering, then melting away
+    if (spread > 0 && life > 0) box(ic.x - ic.rx, ic.y - ic.ry, ic.x + ic.rx, ic.y + ic.ry, (i, px, py) => {
+      if (py < base + CH) return;
+      const u = (px - ic.x) / ic.rx, v = (py - ic.y) / ic.ry, r = Math.sqrt(u * u + v * v); if (r > spread || r > 1) return;
+      const d = this.flake(u, v), lineW = .022 + .012 * (1 - r), front = Math.exp(-Math.pow((spread - r) / .05, 2)) * (spread < 1 ? 1 : 0);
+      let I = .05 + .04 * noise(px * .05, py * .08), g = 46;
+      if (d < lineW) { I = .7 - .25 * r + .2 * Math.sin(t * 2 - r * 9); g = d < lineW * .5 ? 42 : 43; }
+      else if (d < lineW * 2.4) { I = .22; g = 46; }
+      I = (I + front * .6) * life;
+      if (I < .04) return;
+      R[i] += I * .55; G[i] += I; B[i] += I * .95; if (I > .15 || GL[i] < 0 || GL[i] === 46) GL[i] = g;
+    });
+    if (spread > 0 && life > 0) for (let k = 0; k < 6; k++) {   // glints travelling slowly along the six arms
+      const a = k * Math.PI / 3 + Math.PI / 6, q = ((t - ic.t0) * .12 + k * .17) % 1 * Math.min(1, spread), I = Math.sin(q * Math.PI) * life;
+      put(ic.x + Math.cos(a) * q * ic.rx, ic.y + Math.sin(a) * q * ic.ry, I, I, I, 42);
+    }
     const o2 = this.orb;
     if (t < 1.4) {                                     // the last jade sparks of the wing drift apart as Sage appears
       const A = Math.min(W * .44, H * .46), z = ZOOM.z0 * Math.exp((ZOOM.end - ZOOM.t0 + t) * ZOOM.rate);
       wingZoom(W / 2, H / 2, A, z, ZOOM.F, 1, 1 - smooth(.7, 1.4, t), ZOOM.end + t, .85 + t * .2);
     }
-    const fb = t - .8;                                // a ring of light as the orb is born
+    const fb = t - .8;                                 // a ring of light as the orb is born
     if (fb > 0 && fb < .9) for (let k = 0; k < 48; k++) {
-      const a = k / 48 * 6.283, d = Math.min(W, H) * .2 * easeOut(fb / .9), I = 1 - fb / .9;
+      const a = k / 48 * 6.283, d = Math.min(W, H) * .18 * easeOut(fb / .9), I = 1 - fb / .9;
       put(o2.x + Math.cos(a) * d, o2.y + Math.sin(a) * d * .85, I * .6, I, I * .85, k % 2 ? 43 : 42);
     }
     const s = easeBack((t - 1.0) / .7);
-    if (s > 0 && t < ic.t0) {                          // the orb glows above the wall, then is thrown: it arcs toward us and lands in front
-      const pos = u => [o2.x + (ic.x - o2.x) * u, o2.y + (ic.y - o2.y) * u * u - H * .14 * Math.sin(u * Math.PI) * (1 - .3 * u)];
-      const u = clamp((t - 1.85) / (ic.t0 - 1.85)), p = pos(u), rr = o2.r * s * (1 + .025 * Math.sin(t * 2.6)) * (1 + .45 * u * u);
-      if (u > 0) for (let k = 1; k <= 12; k++) { const q = pos(Math.max(0, u - k * .03)), I = (1 - k / 13) * .85; put(q[0] + (hash(k + Math.floor(t * 20)) - .5) * CW * 2, q[1], I * .5, I, I * .9, k % 2 ? 42 : 43); }
+    if (s > 0 && t < ic.t0) {                          // the orb glows, then is thrown: it arcs toward us and lands in front of where the wall will stand
+      const pos = u => [o2.x + (ic.x - o2.x) * u, o2.y + (ic.y - o2.y) * u * u - H * .12 * Math.sin(u * Math.PI) * (1 - .3 * u)];
+      const u = clamp((t - 1.85) / (ic.t0 - 1.85)), p = pos(u), rr = o2.r * s * (1 + .025 * Math.sin(t * 2.6)) * (1 + .4 * u * u);
+      if (u > 0) for (let k = 1; k <= 10; k++) { const q = pos(Math.max(0, u - k * .03)), I = (1 - k / 11) * .8; put(q[0], q[1], I * .5, I, I * .9, k % 2 ? 42 : 43); }
       this.drawOrb(t, p[0], p[1], rr, Math.min(1, s), 1 - smooth(1.6, 1.9, t));
     }
-    if (t > ic.t0 && t < ic.t0 + 1.1) {               // it detonates: a flash, a ring racing out, and a spray of ice shards
-      const u = t - ic.t0, I0 = Math.max(0, 1 - u / 1.1);
-      if (u < .7) for (let k = 0; k < 48; k++) { const a = k / 48 * 6.283, d = easeOut(u / .7); put(ic.x + Math.cos(a) * ic.rx * d, ic.y + Math.sin(a) * ic.ry * d, 1 - u / .7, 1 - u / .7, 1 - u / .7, k % 2 ? 42 : 43); }
-      if (u < .2) box(ic.x - ic.rx * .25, ic.y - ic.ry * .6, ic.x + ic.rx * .25, ic.y + ic.ry * .6, (i, px, py) => {
-        const e2 = Math.pow((px - ic.x) / (ic.rx * .25), 2) + Math.pow((py - ic.y) / (ic.ry * .6), 2); if (e2 > 1) return;
-        const I = (1 - u / .2) * (1 - e2); R[i] += I * .8; G[i] += I; B[i] += I;
+    if (t > ic.t0 && t < ic.t0 + .8) {                 // it detonates: a flash and one clean ring racing out across the ice
+      const u = (t - ic.t0) / .8, n = 72;
+      for (let k = 0; k < n; k++) { const a = k / n * 6.283, d = easeOut(u); put(ic.x + Math.cos(a) * ic.rx * d, ic.y + Math.sin(a) * ic.ry * d, 1 - u, 1 - u, 1 - u, k % 3 ? 43 : 42); }
+      if (u < .3) box(ic.x - ic.rx * .2, ic.y - ic.ry * .5, ic.x + ic.rx * .2, ic.y + ic.ry * .5, (i, px, py) => {
+        const e2 = Math.pow((px - ic.x) / (ic.rx * .2), 2) + Math.pow((py - ic.y) / (ic.ry * .5), 2); if (e2 > 1) return;
+        const I = (1 - u / .3) * (1 - e2); R[i] += I * .8; G[i] += I; B[i] += I;
       });
-      for (let k = 0; k < 30; k++) {
-        const a = hash(k * 3.1) * Math.PI, sp = (.3 + .7 * hash(k * 7.7)) * ic.rx * .9, up = (.4 + hash(k * 1.3)) * H * .3;
-        const x = ic.x + Math.cos(a) * sp * u, y = ic.y - up * u + H * .55 * u * u;
-        if (y > ic.y + CH) continue;
-        put(x, y, I0 * .7, I0, I0 * .95, k % 3 ? 39 : 42);
-      }
-    }
-    if (spread > 0 && life > 0) {                      // inside the field everything moves in slow motion: frost motes barely drifting, slow ripples
-      for (let k = 0; k < 44; k++) {
-        const q = Math.sqrt(hash(k * 1.7)) * .95 * spread, a = hash(k * 4.3) * 6.283, ph = hash(k * 9.1);
-        const x = ic.x + Math.cos(a) * q * ic.rx, y0 = ic.y + Math.sin(a) * q * ic.ry;
-        if (y0 < base + CH) continue;
-        const rise = (t * .05 + ph) % 1, I = Math.sin(rise * Math.PI) * .75 * life;
-        const i = cellIdx(x + Math.sin(t * .4 + k) * CW, y0 - rise * Math.min(H * .12, ic.ry * 1.2));   // added on top, so the frost under it stays bright
-        if (i >= 0 && I > .05) { R[i] += I * .6; G[i] += I; B[i] += I * .95; GL[i] = rise > .5 ? 46 : 43; }
-      }
-      for (let k = 0; k < 2; k++) {
-        const v = ((t - ic.t0) * .09 + k * .5) % 1, I = Math.sin(v * Math.PI) * .35 * life, n = 64;
-        if (v > .06) for (let j = 0; j < n; j++) { const a = j / n * 6.283, i = cellIdx(ic.x + Math.cos(a) * ic.rx * v, ic.y + Math.sin(a) * ic.ry * v); if (i >= 0) { R[i] += I * .5; G[i] += I; B[i] += I * .9; } }
-      }
     }
   }
 });
@@ -2013,8 +2041,8 @@ SCENES.push({
   init() {
     const side = W / H >= 1.25, r = rng(404);
     let tb, reg;
-    if (side) { tb = { x0: W * .04, x1: W * .43, y0: H * .2, y1: H * .72 }; reg = { x: W * .71, y0: H * .05, y1: H * .87, w: W * .56 }; }
-    else { tb = { x0: W * .05, x1: W * .95, y0: H * .03, y1: H * .33 }; reg = { x: W / 2, y0: H * .35, y1: H * .87, w: W * .96 }; }
+    if (side) { tb = { x0: W * .04, x1: W * .43, y0: H * .2, y1: H * .72 }; reg = { x: W * .71, y0: H * .04, y1: H * .72, w: W * .56 }; }   // the bouquet ends above the closing words
+    else { tb = { x0: W * .05, x1: W * .95, y0: H * .03, y1: H * .33 }; reg = { x: W / 2, y0: H * .34, y1: H * .73, w: W * .96 }; }
     const bq = this.bq = Math.min((reg.y1 - reg.y0) / 2.55, reg.w / 2.7);
     const cx = this.cx = reg.x, cy = this.cy = (reg.y0 + reg.y1) / 2 - .22 * bq;
     const fontA = s => `${s}px ${BLACK}`, fontB = NAMEFONT;
@@ -2048,10 +2076,6 @@ SCENES.push({
     }
     this.mops.sort((p, q) => p.y - q.y);
     this.orch = [[-1.02, -.2], [1, -.12], [.42, -.86], [-.48, -.84]].map(([u, v], k) => ({ x: cx + u * bq, y: cy + v * bq, rad: fr * 2.1, rot: r() * 6.28, t0: 7.5 + k * .3 }));
-    this.leaves = [170, 196, 146, 10, -16, 34].map((deg, k) => {
-      const a = deg * Math.PI / 180;
-      return { x: cx + Math.cos(a) * 1.02 * bq, y: cy + Math.sin(a) * .85 * bq + .12 * bq, a, len: bq * .32, wid: bq * .2, t0: 1.9 + k * .12 };
-    });
     this.stars = Array.from({ length: Math.round(N / 55) }, () => ({ x: r() * W, y: r() * H, ph: r() * 6.28, sp: .5 + r() * 2, m: r() }));
     this.petals = Array.from({ length: Math.round(30 + W / 30) }, () => ({ x: r() * W, sp: 14 + r() * 26, ph: r() * H * 1.2, sw: 10 + r() * 30, f: .3 + r() * .9, c: PINKS[(r() * PINKS.length) | 0], g: ".,'`*".charCodeAt((r() * 5) | 0) }));
   },
@@ -2092,17 +2116,6 @@ SCENES.push({
       const I = .34 * (.7 + .3 * Math.cos(a * 16)) * (.55 + .45 * d / fanR) * (d > edge - CH ? 1.35 : 1);
       R[i] = I; G[i] = I * .94; B[i] = I * .88; GL[i] = -1;
     });
-    for (const lf of this.leaves) {                    // leaves peeking out
-      const s = easeBack((t - lf.t0) / .7); if (s <= 0) continue;
-      const L = lf.len * s, wd = lf.wid * s, ca = Math.cos(lf.a), sa = Math.sin(lf.a), ex = lf.x + ca * L * .5, ey = lf.y + sa * L * .5;
-      box(ex - L, ey - L, ex + L, ey + L, (i, px, py) => {
-        const dx = px - ex, dy = py - ey, u = (dx * ca + dy * sa) / (L * .5), ac = -dx * sa + dy * ca;
-        if (u <= -1 || u >= 1) return;
-        const half = wd * .5 * Math.pow(1 - u * u, .8); if (Math.abs(ac) > half) return;
-        const mid = Math.abs(ac) < Math.max(CW * .35, half * .12), I = (mid ? .3 : .4 + .14 * (ac / half)) * (.8 + .2 * u);
-        R[i] = I * .55; G[i] = I * .88; B[i] = I * .55; GL[i] = mid ? slopeGlyph(ca, sa) : -1;
-      });
-    }
     for (const m of this.mops) {                       // stems growing up to each cluster
       const f = easeOut((t - 1 - (m.t0 - 2.5) * .15) / 1.4);
       if (f > 0) lineSeg(nkx, nky, m.x, m.y, f, .4, .78, .42, .9);
