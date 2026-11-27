@@ -503,7 +503,7 @@ openBtn.addEventListener('click', openGift);
 // replay goes all the way back to the gift, ready to be opened again
 function restart() {
   opened = false; bootReady = false; bootMel = false;
-  const b = SCENES[0]; delete b.exitAt; b.dur = 30;
+  const b = SCENES[0]; delete b.exitAt; b.dur = Infinity;
   go(0); if (audioOn && b.onAudio) b.onAudio();
 }
 replayBtn.addEventListener('click', restart);
@@ -622,7 +622,8 @@ function drawFlower(o, t) {
 }
 
 SCENES.push({
-  boot: true, dur: 30, fadeIn: .3, fadeOut: .7, capPos: 'top', glow: .65,
+  boot: true, dur: Infinity, fadeIn: .3,           // the gift waits, however long it takes, until she opens it
+  fadeOut: .7, capPos: 'top', glow: .65,
   bg0: [.022, .01, .026], bg1: [.03, .012, .03],
   onAudio() { startLoop(4 * .85, bootAmb); },
   caps: [],
@@ -637,7 +638,6 @@ SCENES.push({
   draw(t) {
     const p = bootP(t), cx = W / 2, cy = H / 2 - .06 * S;
     openBtn.hidden = !(t > 8.2 && !opened);
-    if (!opened && t > this.dur - 2.2) openGift();       // if nobody taps, the gift opens itself
     loadEl.hidden = opened || t > 8.2;                // a thin bar fills under the flower, then the gift is ready
     loadBar.style.width = (p * 100).toFixed(1) + '%';
     this.dust(t);
