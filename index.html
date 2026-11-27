@@ -57,6 +57,7 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:3px}
 #fly .info{font-size:.76em;font-weight:400;color:#f3c9da;letter-spacing:.05em}
 #final{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);padding-inline:max(16px,env(safe-area-inset-left,0px));text-align:center;pointer-events:none;opacity:0;transition:opacity 1.8s ease}
 #final.on{opacity:1}
+body.leaving #final{transition:opacity .5s ease}
 #final .a{font:italic 700 clamp(15px,1vw + 10px,22px) var(--serif);color:var(--ink);text-shadow:0 0 14px rgba(255,140,185,.65),0 1px 2px rgba(0,0,0,.9)}
 #final .zh{font-size:clamp(12px,.5vw + 10px,16px);margin:.15em 0 .35em}
 #final .b{margin-top:.35em;font-size:clamp(10px,.3vw + 9px,13px);color:var(--dim);letter-spacing:.08em}
@@ -417,10 +418,10 @@ function audioGraph() {
   REV = AC.createConvolver(); REV.buffer = ir;
   const wet = AC.createGain(); wet.gain.value = .42; MASTER.connect(REV); REV.connect(wet); wet.connect(OUT);
 }
-function newBus() {
+function newBus(fade = .3) {                           // a fresh bus per scene; the old one fades out (quickly, so music never doubles up)
   stopLoop();
   if (!AC) return null;
-  if (BUS) { const old = BUS; old.gain.setTargetAtTime(0, AC.currentTime, .5); setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 4000); }
+  if (BUS) { const old = BUS; old.gain.setTargetAtTime(0, AC.currentTime, fade); setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 4000); }
   BUS = AC.createGain(); BUS.connect(MASTER); return BUS;
 }
 // sounds only play once the browser has really started audio (otherwise they would pile up and burst out later)
@@ -499,7 +500,7 @@ function frame(now) {
   const dt = Math.min(.05, Math.max(0, (now - lastT) / 1000)); lastT = now;
   let sc = SCENES[si];
   st += dt;
-  if (st >= sc.dur) { go(si + 1); sc = SCENES[si]; }
+  if (st >= sc.dur) { if (sc.final) doRestart(); else go(si + 1); sc = SCENES[si]; }
   if (sc.cues) for (let k = 0; k < sc.cues.length; k++) {
     if (!fired.has(k) && st >= sc.cues[k][0]) { fired.add(k); if (st - sc.cues[k][0] < .5) { try { sc.cues[k][1](); } catch (e) {} } }
   }
@@ -512,8 +513,8 @@ function frame(now) {
   const k = Math.min(1, dt * 2.5), b0 = sc.bg0 || [.02, .01, .024], b1 = sc.bg1 || [.03, .012, .03];
   for (let c = 0; c < 3; c++) { bgA[c] += (b0[c] - bgA[c]) * k; bgB[c] += (b1[c] - bgB[c]) * k; }
   capsUpdate(st);
-  finalEl.classList.toggle('on', !!sc.final && st > 10.8);
-  if (sc.final && st > 12.2 && replayBtn.hidden) replayBtn.hidden = false;
+  finalEl.classList.toggle('on', !!sc.final && st > 10.8 && !leaving);
+  if (sc.final && st > 12.2 && replayBtn.hidden && !leaving) replayBtn.hidden = false;
   renderer.draw(bgA, bgB, sc.glow === undefined ? .6 : sc.glow);
 }
 // browsers only allow sound after a tap or key press, so the first one anywhere turns it on
@@ -534,13 +535,22 @@ function openGift() {
   opened = true; unlockAudio(); openBtn.hidden = true;
   const sc = SCENES[si];
   if (sc.boot) { sc.exitAt = st; sc.dur = st + 1.9; } else go(1);   // the loading flower blows away first, then her name appears
-  const chime = () => { roll([53, 57, 60, 65, 69, 72, 77, 81], 0, .08, .42); sparkle(.7, 1, 3, .16); };
+  const chime = () => { newBus(.1); roll([53, 57, 60, 65, 69, 72, 77, 81], 0, .08, .42); sparkle(.7, 1, 3, .16); };   // hush the loading music, then the chime
   if (AC && AC.state === 'running') chime(); else if (AC) AC.resume().then(chime).catch(() => {});
 }
 openBtn.addEventListener('click', openGift);
-// replay goes all the way back to the gift, ready to be opened again
+// replay: the ending fades out completely (words, button, picture, music), then the gift is back, ready to be opened again
+let leaving = false;
 function restart() {
+  if (leaving) return;
+  leaving = true; replayBtn.hidden = true; finalEl.classList.remove('on'); document.body.classList.add('leaving');
+  stopLoop(); if (AC && BUS) BUS.gain.setTargetAtTime(0, AC.currentTime, .25);
+  const sc = SCENES[si]; sc.dur = st + 1.0;           // the scene fades to black over its last second
+}
+function doRestart() {
+  leaving = false; document.body.classList.remove('leaving');
   opened = false; bootReady = false; bootMel = false;
+  for (const sc of SCENES) if (sc.final) sc.dur = Infinity;
   const b = SCENES[0]; delete b.exitAt; delete b.bloomAt; b.dur = Infinity;
   go(0); if (audioOn && b.onAudio) b.onAudio();
 }
@@ -712,7 +722,7 @@ function heartIn(qx, qy) { const a = qx * qx + qy * qy - 1; return a * a * a - q
 SCENES.push({
   dur: 10.5, glow: .7, bg0: [.02, .008, .022], bg1: [.045, .012, .036],
   caps: [{ at: 4.6, text: "happy birthday, baobei", zh: "生日快乐，宝贝" }],
-  cues: [[.15, () => playBars(THEME_A, 0, .64, .5)], [.6, () => sparkle(0, 2.2, 5, .15)]],
+  cues: [[.15, () => playBars(THEME_B, 0, .64, .5)], [.6, () => sparkle(0, 2.2, 5, .15)]],
   init() {
     let items, lineY;
     if (W < H) {
@@ -1124,7 +1134,7 @@ SCENES.push({
     this.hc = P ? [W * .5, H * .5] : [W * .52, H * .42]; this.hs = P ? Math.min(W, H) * .14 : Math.min(W * .07, H * .125);
   },
   draw(t) {
-    const fa = smooth(5.4, 7.6, t), fc = smooth(6.4, 8.0, t), mwk = 1 - .8 * fa, G1 = this.G1;
+    const fa = smooth(6.0, 7.3, t), fc = smooth(6.5, 7.8, t), mwk = 1 - .8 * fa, G1 = this.G1;
     for (let i = 0; i < N; i++) { const m = this.mw[i] * mwk; if (m > .02) { const I = m * (.85 + .15 * Math.sin(t * .8 + i)); R[i] = I * .75; G[i] = I * .65; B[i] = I; GL[i] = -1; } }
     for (const s of this.stars) {
       const I = (.15 + .55 * s.m) * (.55 + .45 * (.5 + .5 * Math.sin(t * s.sp + s.ph)));
@@ -1133,23 +1143,21 @@ SCENES.push({
     const bob = Math.sin(t * 2.1) * CH * .25, blink = k => ((t + k) % 3.4 < .14 ? .12 : 1);
     if (fa > 0) {                                      // her goat appears from the nose back, a little sparkle along the edge
       const front = this.revA + (this.revB - this.revA) * easeInOut((t - 5.4) / 2.2), g = this.goat;
-      drawFigure({ x: g.x, y: g.y + bob, s: g.s, bx: g.bx }, goatLayers({ blink: blink(0), ear: .12 * Math.sin(t * 1.7) }), (i, px) => (px < front - HSH[i] * CW * 4 ? 0 : 1));
-      if (t < 7.9) for (let k = 0; k < 14; k++) put(front + (hash(k + Math.floor(t * 10)) - .5) * CW * 2, g.y + (hash(k * 3.3 + Math.floor(t * 12)) - .5) * 1.5 * g.s, 1, .85, .95, 42);
+      drawFigure({ x: g.x, y: g.y + bob, s: g.s, bx: g.bx }, goatLayers({ blink: blink(0), ear: .12 * Math.sin(t * 1.7) }), () => fa);   // a soft fade in, once the stars are done
     }
     if (fc > 0) {                                      // his crab appears from the top down, then waves
       const front = this.crabTop + (this.crabBot - this.crabTop) * easeInOut((t - 6.4) / 1.6), c = this.crabF;
-      drawFigure({ x: c.x, y: c.y - bob, s: c.s, bx: c.bx }, crabLayers({ blink: blink(1.7), wave: t * 4 }), (i, px, py) => (py > front + HSH[i] * CH * 3 ? 0 : 1));
-      if (t < 8.3) for (let k = 0; k < 12; k++) put(c.x + (hash(k * 2.1 + Math.floor(t * 12)) - .5) * 2.1 * c.s, front + (hash(k + 5 + Math.floor(t * 10)) - .5) * CH * 2, 1, .9, .85, 42);
+      drawFigure({ x: c.x, y: c.y - bob, s: c.s, bx: c.bx }, crabLayers({ blink: blink(1.7), wave: t * 4 }), () => fc);
     }
-    const P = this.pts, seg = .34;                     // her constellation lines
+    const P = this.pts, seg = .2;                     // her constellation lines
     for (let k = 0; k < P.length; k++) {
-      const a = P[k], b = P[(k + 1) % P.length], f = clamp((t - 3.4 - k * seg) / seg);
+      const a = P[k], b = P[(k + 1) % P.length], f = clamp((t - 3.3 - k * seg) / seg);
       if (f <= 0) continue;
       if (fa < 1) lineSeg(a.x, a.y, b.x, b.y, f, .95, .55, .78, .72 * (1 - fa), 2);
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .95, 42);
     }
     CNC_LINES.forEach(([j, k], n) => {                 // his constellation lines
-      const a = this.cpts[j], b = this.cpts[k], f = clamp((t - 4.4 - n * .34) / .34);
+      const a = this.cpts[j], b = this.cpts[k], f = clamp((t - 4.1 - n * .25) / .25);
       if (f <= 0) return;
       if (fc < 1) lineSeg(a.x, a.y, b.x, b.y, f, 1, .7, .6, .72 * (1 - fc), 2);
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .85, 42);
@@ -1643,7 +1651,7 @@ SCENES.push({
       const a = -1.5708 + .55 * Math.sin(t * .35 + k * 2.1), len = H * .8, ex = Math.cos(a) * len, ey = Math.sin(a) * len;
       lineSeg(bx, by, bx + ex, by + ey, 1, .72, .76, 1, .14, 0, 46); lineSeg(bx + CW, by, bx + CW + ex, by + ey, 1, .72, .76, 1, .08, 0, 46);
     });
-    const lu = clamp((t - .2) / 4.4);                  // QX0104 gliding in to land at PVG, landing light on, behind the skyline
+    const lu = clamp((t - .2) / 7.6);                  // QX0104 gliding in to land at PVG, landing light on, behind the skyline
     if (lu > 0 && lu < 1) {
       const e = easeInOut(lu), px = -W * .1 + e * W * .85, py = H * .1 + e * (yH - H * .14), Lp = Math.min(W, H) * .14;
       const Pf = drawPlane(px, py, Lp, -.08, t), nose = Pf(.47, 0);
@@ -2131,18 +2139,24 @@ SCENES.push({
       const I = (.1 + .3 * s.m) * (.5 + .5 * Math.sin(t * s.sp + s.ph)) * clamp(t / 2);
       if (I > .04) put(s.x, s.y, I * .95, I * .85, I, s.m > .85 ? 43 : 46);
     }
-    // back paper, fanning open behind the flowers
-    const nkx = cx, nky = cy + .75 * bq, fanR = 1.75 * bq * easeOut((t - .2) / 1.4);
-    if (fanR > 2) box(nkx - fanR, nky - fanR, nkx + fanR, nky, (i, px, py) => {
-      const dx = px - nkx, dy = py - nky, d = Math.sqrt(dx * dx + dy * dy); if (d > fanR) return;
-      const a = Math.atan2(dy, dx); if (a > -.7854 || a < -2.3562) return;
-      const edge = fanR * (1 - .05 * Math.abs(Math.sin(a * 11))); if (d > edge) return;
-      const I = .34 * (.7 + .3 * Math.cos(a * 16)) * (.55 + .45 * d / fanR) * (d > edge - CH ? 1.35 : 1);
-      R[i] = I; G[i] = I * .94; B[i] = I * .88; GL[i] = -1;
+    // the wrap is one paper cone: its back wall unfolds upward from the same tip, flaring gently behind the flowers
+    const tipY = cy + 1.32 * bq, topBase = cy + .48 * bq, hw0 = 1.02 * bq, bowY = cy + .98 * bq, slope = hw0 / (tipY - topBase), WB = 1.5 * bq;
+    const backTop = cy - .95 * bq, unf = easeOut((t - .5) / 1.5), yTopNow = topBase - (topBase - backTop) * unf;
+    const halfW = py => WB * Math.tanh(slope * (tipY - py) * 1.06 / WB);      // straight cone edges near the tip, easing to a gentle flare
+    if (unf > 0) box(cx - WB, yTopNow - CH, cx + WB, topBase + CH * 3, (i, px, py) => {
+      const dx = px - cx, hw = halfW(py); if (Math.abs(dx) > hw) return;
+      const q = dx / hw, edgeY = yTopNow + .1 * bq * q * q + .025 * bq * Math.abs(Math.sin(q * 9)); if (py < edgeY) return;
+      const a = Math.atan2(dx, tipY - py), fold = Math.cos(a * 20), side = Math.abs(dx) > hw - CW * 1.3, rim = py - edgeY < CH;
+      const I = .24 * (.72 + .28 * fold) * (q < 0 ? 1.1 : .85) * (side || rim ? 1.5 : 1);
+      R[i] = I; G[i] = I * .94; B[i] = I * .9; GL[i] = rim ? 126 : side ? (dx < 0 ? 47 : 92) : -1;
     });
-    for (const m of this.mops) {                       // stems growing up to each cluster
-      const f = easeOut((t - 1 - (m.t0 - 2.5) * .15) / 1.4);
-      if (f > 0) lineSeg(nkx, nky, m.x, m.y, f, .4, .78, .42, .9);
+    for (const m of this.mops) {                       // long stems grow up from below the ribbon, through the wrap, to each cluster
+      const g = easeInOut((t - .9 - (m.t0 - 2.5) * .1) / 1.7); if (g <= 0) continue;
+      const x0 = cx + (m.x - cx) * .06, y0 = tipY + .36 * bq, xc = cx + (m.x - cx) * .22, yc = topBase + .12 * bq;
+      const P = u => { const v = 1 - u; return [v * v * x0 + 2 * v * u * xc + u * u * m.x, v * v * y0 + 2 * v * u * yc + u * u * m.y]; };
+      let p0 = P(0); const n = 26, kk = Math.ceil(n * g);
+      for (let j = 1; j <= kk; j++) { const p1 = P(Math.min(g, j / n)); lineSeg(p0[0], p0[1], p1[0], p1[1], 1, .36, .8, .44, .92); p0 = p1; }
+      if (g < 1) put(p0[0], p0[1], .85, 1, .7, 42);   // a little bud of light at the growing tip
     }
     for (const m of this.mops) {                       // hydrangea mopheads, floret by floret
       const ms = easeOut((t - m.t0 - .2) / .8); if (ms <= 0) continue;
@@ -2167,37 +2181,37 @@ SCENES.push({
       for (const o of m.ro) this.rose(o, t);
     }
     for (const o of this.orch) this.orchid(o, t);
-    // front paper cone with folds, a ribbon band and a bow
-    const tipY = cy + 1.32 * bq, topBase = cy + .48 * bq, hw0 = 1.02 * bq, bowY = cy + .98 * bq;
-    const rev = easeOut((t - .4) / 1.4), revY = tipY - (tipY - (cy + .4 * bq)) * rev;
+    // the front of the paper cone, with folds; then the ribbon wraps round it and ties itself into a bow
+    const rev = easeOut((t - .4) / 1.4), revY = tipY - (tipY - (cy + .4 * bq)) * rev, wrap = easeInOut((t - 2.1) / .45);
     if (rev > 0) box(cx - hw0 * 1.1, cy + .4 * bq, cx + hw0 * 1.1, tipY, (i, px, py) => {
       if (py < revY) return;
       const dx = px - cx, ty = topBase + .035 * bq * Math.sin(dx / bq * 10); if (py < ty) return;
       const span = (tipY - py) / (tipY - topBase), hw = hw0 * span * (1 + .06 * Math.sin(span * 3.1416));
       if (Math.abs(dx) > hw) return;
-      if (Math.abs(py - bowY) < Math.max(CH * .6, .03 * bq)) { R[i] = .95; G[i] = .55; B[i] = .7; GL[i] = -1; return; }
+      if (wrap > 0 && Math.abs(py - bowY) < Math.max(CH * .6, .03 * bq) && dx < -hw + 2 * hw * wrap) {   // the band, wrapping left to right
+        const sh = .8 + .2 * (1 - Math.abs(dx) / hw); R[i] = .98 * sh; G[i] = .56 * sh; B[i] = .72 * sh; GL[i] = -1; return;
+      }
       const pl = Math.cos(Math.atan2(dx, tipY - py) * 22), rim = py - ty < CH * 1.1;
       const I = (.3 + .08 * pl) * (dx < 0 ? 1 : .8) * (rim ? 1.45 : 1) * (.75 + .25 * (1 - Math.abs(dx) / hw));
       R[i] = I; G[i] = I * .95; B[i] = I * .9; GL[i] = -1;
       if (rim) GL[i] = 126; else if (pl > .93) GL[i] = dx < 0 ? 92 : 47;
     });
-    if (rev >= 1) {
-      const bs = easeBack((t - 1.9) / .6);
-      if (bs > 0) {
-        const loop = (x0, y0, ax, ay, rot) => box(x0 - ax, y0 - ax, x0 + ax, y0 + ax, (i, px, py) => {
-          const dx = px - x0, dy = py - y0, c = Math.cos(rot), s = Math.sin(rot), u = (dx * c + dy * s) / ax, v = (-dx * s + dy * c) / ay, d = u * u + v * v;
-          if (d < 1) { const I = d > .4 ? .95 : .45; R[i] = I; G[i] = I * .58; B[i] = I * .72; GL[i] = -1; }
-        });
-        loop(cx - .2 * bq * bs, bowY - .03 * bq, .19 * bq * bs, .1 * bq * bs, -.3);
-        loop(cx + .2 * bq * bs, bowY - .03 * bq, .19 * bq * bs, .1 * bq * bs, .3);
-        lineSeg(cx, bowY, cx - .16 * bq, bowY + .3 * bq * bs, 1, 1, .58, .72, .9);
-        lineSeg(cx, bowY, cx + .16 * bq, bowY + .3 * bq * bs, 1, 1, .58, .72, .9);
-        const kr = Math.max(CW * .7, .05 * bq);
-        box(cx - kr, bowY - kr, cx + kr, bowY + kr, (i, px, py) => { if ((px - cx) * (px - cx) + (py - bowY) * (py - bowY) < kr * kr) { R[i] = 1; G[i] = .6; B[i] = .75; GL[i] = 64; } });
+    const tie = t - 2.55;                              // a knot, then each loop pulled out in turn, then the tails drop and swing as it tightens
+    if (tie > 0) {
+      const lA = easeBack(clamp(tie / .35)), rA = easeBack(clamp((tie - .22) / .35)), tl = easeOut(clamp((tie - .5) / .4));
+      const sw = Math.sin(tie * 7) * Math.exp(-tie * 2.2) * .25;
+      const loop = (x0, y0, ax, ay, rot) => box(x0 - ax, y0 - ax, x0 + ax, y0 + ax, (i, px, py) => {
+        const dx = px - x0, dy = py - y0, c = Math.cos(rot), sn = Math.sin(rot), u = (dx * c + dy * sn) / ax, v = (-dx * sn + dy * c) / ay, d = u * u + v * v;
+        if (d < 1) { const I = d > .4 ? .95 : .45; R[i] = I; G[i] = I * .58; B[i] = I * .72; GL[i] = -1; }
+      });
+      if (lA > 0) loop(cx - .2 * bq * lA, bowY - .03 * bq, .19 * bq * lA, .1 * bq * lA, -.3 - .6 * (1 - lA) + sw);
+      if (rA > 0) loop(cx + .2 * bq * rA, bowY - .03 * bq, .19 * bq * rA, .1 * bq * rA, .3 + .6 * (1 - rA) - sw);
+      if (tl > 0) {
+        lineSeg(cx, bowY, cx - .16 * bq + sw * bq * .25, bowY + .3 * bq * tl, 1, 1, .58, .72, .9);
+        lineSeg(cx, bowY, cx + .16 * bq + sw * bq * .25, bowY + .3 * bq * tl, 1, 1, .58, .72, .9);
       }
-      lineSeg(cx, tipY - CH, cx - .05 * bq, tipY + .13 * bq, 1, .4, .78, .42, .8);
-      lineSeg(cx, tipY - CH, cx, tipY + .15 * bq, 1, .4, .78, .42, .8);
-      lineSeg(cx, tipY - CH, cx + .05 * bq, tipY + .12 * bq, 1, .4, .78, .42, .8);
+      const kr = Math.max(CW * .7, .05 * bq) * easeBack(clamp(tie / .2));
+      if (kr > 0) box(cx - kr, bowY - kr, cx + kr, bowY + kr, (i, px, py) => { if ((px - cx) * (px - cx) + (py - bowY) * (py - bowY) < kr * kr) { R[i] = 1; G[i] = .6; B[i] = .75; GL[i] = 64; } });
     }
     if (t > 8.6) {                                     // "Happy Birthday / Qi Xuan" written in
       const span = this.tx1 - this.tx0, w1 = this.tx0 + span * easeInOut((t - 8.6) / 1.4), w2 = this.tx0 + span * easeInOut((t - 9.4) / 1.4);
