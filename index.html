@@ -550,9 +550,21 @@ function onAudioReady() {
   const sc = SCENES[si]; if (sc.onAudio) sc.onAudio();
 }
 function unlockAudio() {
-  if (SCENES[si] && SCENES[si].boot && st < 8.2 && !opened) return;   // taps while the loading bar fills don't start anything yet
-  audioInit(); if (!AC) { bootBloom(); return; }        // no sound at all on this device: bloom anyway
-  if (AC.state === 'running') onAudioReady(); else AC.resume().then(onAudioReady).catch(() => bootBloom());
+  if (SCENES[si] && SCENES[si].boot && !opened) { tapToPlay(); return; }   // on the gift screen nothing plays until "tap to play"
+  audioInit(); if (!AC) return;
+  if (AC.state === 'running') onAudioReady(); else AC.resume().then(onAudioReady).catch(() => {});
+}
+// "tap to play" (only once the loading bar is full): the flower blooms and its music begins together
+function tapToPlay() {
+  if (st < 8.2) return;
+  bootBloom(); openBtn.hidden = true;
+  audioInit(); if (!AC) return;                        // no sound at all on this device: it still blooms
+  if (AC.state === 'running') bootMusic(); else AC.resume().then(bootMusic).catch(() => {});
+}
+function bootMusic() {
+  const b = SCENES[si];
+  if (!b.boot || opened || b.musicOn || !AC || AC.state !== 'running') return;
+  b.musicOn = true; audioOn = true; newBus(); startLoop(4 * .85, bootAmb);
 }
 for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, { passive: true });   // any first touch starts the music
 function openGift() {
@@ -563,7 +575,6 @@ function openGift() {
   const chime = () => { newBus(.1); roll([53, 57, 60, 65, 69, 72, 77, 81], 0, .08, .42); sparkle(.7, 1, 3, .16); };   // hush the loading music, then the chime
   if (AC && AC.state === 'running') chime(); else if (AC) AC.resume().then(chime).catch(() => {});
 }
-openBtn.addEventListener('click', openGift);
 // replay: the ending fades out completely (words, button, picture, music), then the gift is back, ready to be opened again
 let leaving = false;
 function restart() {
@@ -576,13 +587,13 @@ function doRestart() {
   leaving = false; document.body.classList.remove('leaving');
   opened = false; bootReady = false; bootMel = false;
   for (const sc of SCENES) if (sc.final) sc.dur = Infinity;
-  const b = SCENES[0]; delete b.exitAt; delete b.bloomAt; b.dur = Infinity;
-  go(0); if (audioOn && b.onAudio) b.onAudio();
+  const b = SCENES[0]; delete b.exitAt; delete b.bloomAt; delete b.musicOn; b.dur = Infinity;
+  go(0);                                               // back to the gift, waiting for "tap to play" again
 }
 replayBtn.addEventListener('click', restart);
-addEventListener('click', () => { if (!openBtn.hidden) openGift(); else if (!replayBtn.hidden) restart(); });   // a tap anywhere
+addEventListener('click', () => { if (!replayBtn.hidden) restart(); });   // at the end, a tap anywhere replays
 addEventListener('keydown', e => {
-  if ((e.key === 'Enter' || e.key === ' ') && SCENES[si].boot && !openBtn.hidden && !opened) { e.preventDefault(); openGift(); }
+  if ((e.key === 'Enter' || e.key === ' ') && SCENES[si].boot && !opened) { e.preventDefault(); tapToPlay(); }
 });
 let rzT = 0;
 addEventListener('resize', () => {
@@ -592,8 +603,7 @@ addEventListener('resize', () => {
 function start() {
   layout(); go(0);
   requestAnimationFrame(t => { lastT = t; requestAnimationFrame(frame); });
-  audioInit();                                        // some browsers allow sound right away; others wait for the first tap
-  if (AC) { if (AC.addEventListener) AC.addEventListener('statechange', onAudioReady); onAudioReady(); }
+  // no sound at all until she taps "tap to play"
   if (document.fonts && document.fonts.load) {
     Promise.all([
       document.fonts.load('700 20px "JetBrains Mono"'),
@@ -714,7 +724,6 @@ SCENES.push({
   boot: true, dur: Infinity, fadeIn: .3,           // the gift waits, however long it takes, until she opens it
   fadeOut: .7, capPos: 'top', glow: .65,
   bg0: [.022, .01, .026], bg1: [.03, .012, .03],
-  onAudio() { startLoop(4 * .85, bootAmb); bootBloom(); },
   caps: [],
   cues: [[8.0, () => { bootReady = true; }]],
   dust(t) {
@@ -726,17 +735,18 @@ SCENES.push({
   },
   draw(t) {
     const p = bootP(t), cx = W / 2, cy = H / 2 - .06 * S;
-    const waiting = this.bloomAt === undefined, b0 = waiting ? Infinity : Math.max(this.bloomAt, 2.4), u = t - b0, bloom = easeInOut(u / 3.2);
-    openBtn.hidden = !(t > 8.2 && u > 3.4 && !opened);          // the gift is ready once the bar is full and the flower has bloomed
+    const waiting = this.bloomAt === undefined, b0 = waiting ? Infinity : Math.max(this.bloomAt, 2.4), u = t - b0, bloom = 1 - Math.exp(-Math.pow(Math.max(0, u) / 2.26, 1.6));   // half open by 1.8 s, then the front petals unfurl slowly over the next ~3 s
+    openBtn.hidden = !(waiting && t > 8.2 && !opened);  // once the bar is full, "tap to play" appears in its place
+    if (!waiting && u > 7.4 && !opened) openGift();      // once it has bloomed and sung a little, the gift opens by itself
     loadEl.hidden = opened || t > 8.2;                // a thin bar fills under the flower
-    tapEl.hidden = !(waiting && t > 8.2 && !opened);  // once the bar is full, a soft prompt to tap appears in its place
+    tapEl.hidden = true;
     loadBar.style.width = (p * 100).toFixed(1) + '%';
     this.dust(t);
-    const bud = easeOut((t - .9) / 2.6), size = .12 + .4 * bud + .48 * easeOut(u / 3.2) + (waiting ? .025 * Math.sin(t * 2.2) * bud : 0);   // a bud that breathes while it waits
+    const bud = easeOut((t - .9) / 2.6), size = .12 + .4 * bud + .48 * easeOut(u / 4.2) + (waiting ? .025 * Math.sin(t * 2.2) * bud : 0);   // a bud that breathes while it waits
     if (t > .3 && bud < .02) { const I = .5 + .5 * Math.sin(t * 6); put(cx, cy, I, I * .85, I * .95, 42); }   // a single point of light
     if (bud > 0) drawFlower({
       x: cx, y: cy + S * .12, R: S * .58 * size, open: bloom, fresh: 1 - smooth(.2, 2.6, u),
-      yaw: t * .3, pitch: .25 + .62 * bloom, alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
+      yaw: t * .2, pitch: .25 + .62 * bloom, alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
     }, t);
   }
 });
