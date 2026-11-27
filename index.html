@@ -75,13 +75,19 @@ body.leaving #final{transition:opacity .5s ease}
 @media (prefers-reduced-motion: reduce){#open::after,#replay::after{animation:none;display:none}}
 /* captions sit on a soft, feathered dark oval so they read over any scene */
 #term{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:.4em 2em .5em;border-radius:999px;background:radial-gradient(ellipse at center,rgba(6,2,10,.66) 0%,rgba(6,2,10,.46) 48%,rgba(6,2,10,0) 74%);text-shadow:0 0 18px rgba(255,140,185,.5),0 2px 8px rgba(0,0,0,.95)}
+/* "tap to play" and "tap to replay" are just soft glowing words: a tap anywhere does it */
+#open,#replay,#open:hover,#replay:hover{background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;filter:none}
+#open,#replay{padding:.2em .6em;overflow:visible;font-size:clamp(22px,1.3vw + 16px,32px);text-shadow:0 0 14px rgba(255,140,185,.75),0 2px 6px rgba(0,0,0,.9)}
+#open{animation:softpulse 2.6s ease-in-out infinite}
+#replay{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);animation:fadein 1.4s ease both,softpulse 2.6s ease-in-out 1.4s infinite}
+#open::before,#open::after,#replay::before,#replay::after,#open .zh::before,#replay .zh::before{display:none}
 </style>
 <div id="stage"><canvas id="cv" role="img" aria-label="Animated ASCII birthday card for Qi Xuan"></canvas></div>
 <div id="term" aria-live="polite"></div>
 <div id="load" hidden><div>a little something for you</div><div class="zh">送你的一份小心意</div><div class="track"><i></i></div></div>
 <div id="tap" hidden>tap to let it bloom &#9835;<span class="zh">轻触屏幕，让它绽放</span></div>
-<button id="open" type="button" hidden>open your gift &#9825;<span class="zh">打开你的礼物</span></button>
-<button id="replay" type="button" hidden>watch again &#8634;<span class="zh">再看一次</span></button>
+<button id="open" type="button" hidden>tap to play &#9825;<span class="zh">轻触开始</span></button>
+<button id="replay" type="button" hidden>tap to replay &#8634;<span class="zh">轻触重播</span></button>
 <div id="fly" hidden><div class="route"><div><b>YYZ</b><small>Toronto</small></div><div><b>PVG</b><small>Shanghai &#19978;&#28023;</small></div></div><div class="track"><i></i><em>&#9992;&#xFE0E;</em></div><div class="info"></div></div>
 <div id="final"><div class="a">January 4 &middot; Toronto &rarr; Shanghai 上海 &middot; welcome home</div><div class="zh">1月4日 · 多伦多 → 上海 · 欢迎回家</div><div class="b">light pink hydrangeas, just for you</div><div class="zh">浅粉色的绣球花，只送给你</div></div>
 <script>
@@ -531,8 +537,8 @@ function frame(now) {
   const k = Math.min(1, dt * 2.5), b0 = sc.bg0 || [.02, .01, .024], b1 = sc.bg1 || [.03, .012, .03];
   for (let c = 0; c < 3; c++) { bgA[c] += (b0[c] - bgA[c]) * k; bgB[c] += (b1[c] - bgB[c]) * k; }
   capsUpdate(st);
-  finalEl.classList.toggle('on', !!sc.final && st > 10.8 && !leaving);
-  if (sc.final && st > 12.2 && replayBtn.hidden && !leaving) replayBtn.hidden = false;
+  finalEl.classList.toggle('on', !!sc.final && st > 14.2 && !leaving);
+  if (sc.final && st > 15.8 && replayBtn.hidden && !leaving) replayBtn.hidden = false;
   renderer.draw(bgA, bgB, sc.glow === undefined ? .6 : sc.glow);
 }
 // browsers only allow sound after a tap or key press, so the first one anywhere turns it on
@@ -574,6 +580,7 @@ function doRestart() {
   go(0); if (audioOn && b.onAudio) b.onAudio();
 }
 replayBtn.addEventListener('click', restart);
+addEventListener('click', () => { if (!openBtn.hidden) openGift(); else if (!replayBtn.hidden) restart(); });   // a tap anywhere
 addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && SCENES[si].boot && !openBtn.hidden && !opened) { e.preventDefault(); openGift(); }
 });
@@ -1460,8 +1467,8 @@ function drawPlane(cx, cy, Lp, ang, t) {
 const padTo = (s, n) => (s.length >= n ? s.slice(0, n) : s + ' '.repeat(n - s.length));
 
 SCENES.push({
-  dur: 12.5, glow: .8, bg0: [.01, .014, .055], bg1: [.06, .035, .1],
-  caps: [{ at: 1.4, text: "the long way home", zh: "漫长的回家路" }, { at: 8.4, text: "almost there", zh: "快到了" }],
+  dur: 14, glow: .8, bg0: [.01, .014, .055], bg1: [.06, .035, .1],
+  caps: [{ at: 1.4, text: "the long way home", zh: "漫长的回家路" }, { at: 9.6, text: "almost there", zh: "快到了" }],
   cues: [[.25, () => { piano(81, 0, .3, 2.6); piano(77, .55, .3, 3); }], [1.4, () => playBars([['Bb', [[77, 0, 2], [74, 2, 2]]], ['C', [[76, 0, 2], [72, 2, 2]]], ['Dm', [[74, 0, 1], [72, 1, 1], [69, 2, 2]]], ['F', [[72, 0, 4]]]], 0, .7, .42)]],
   init() {
     const r = rng(1504);
@@ -1480,7 +1487,7 @@ SCENES.push({
     }
   },
   draw(t) {
-    const f = clamp((t - .5) / 10.5), cloudTop = H * .64;
+    const f = clamp((t - .5) / 11.8), cloudTop = H * .64;
     for (const s of this.stars) { const I = (.12 + .4 * s.m) * (.5 + .5 * Math.sin(t * s.sp + s.ph)); if (I > .05) put(s.x, s.y, I * .9, I * .9, I, s.m > .8 ? 43 : 46); }
     const mx = W * .82, my = H * .2, mr = Math.min(W, H) * .075;     // the moon
     box(mx - mr, my - mr, mx + mr, my + mr, (i, px, py) => {
@@ -1501,7 +1508,7 @@ SCENES.push({
       for (let y = H * .32; y < cloudTop + H * .05; y += CH * 2) put(dl, y, .35, .75, .9, 124);
       textAt(dl, H * .28, '180', .5, .9, 1, 'center'); textAt(dl, H * .28 + CH, 'DATE LINE', .5, .9, 1, 'center');
     }
-    const Lp = Math.min(W * (W < H ? .84 : .5), H * .95), exit = Math.pow(clamp((t - 10.6) / 1.6), 2);
+    const Lp = Math.min(W * (W < H ? .84 : .5), H * .95), exit = Math.pow(clamp((t - 12.1) / 1.6), 2);
     const pcx = W * (W < H ? .52 : .46) + exit * W * .75, pcy = H * .45 - exit * H * .12, ang = .1 * exit;
     for (let k = 1; k < 70; k++) {                                   // contrails from both engines
       const x = pcx - Lp * (.08 + k * .012), w = Math.sin(t * 2 + k * .3) * CH * .15, I = .42 * Math.pow(1 - k / 70, 1.6);
@@ -1894,8 +1901,9 @@ function drawButterfly(o, t) {
   const bstep = Math.max(.004, Math.min(CW, CH) * .4 / o.A), bf = o.form === undefined ? 1 : smooth(1.2, 2.2, o.form);
   if (bf > 0) for (let b = -.48; b <= .32; b += bstep) {    // body: fuzzy thorax, striped abdomen
     const w = bodyW(b); if (w <= 0) continue;
-    for (let k = 0; k < 8; k++) {
-      const ph = k * .785, q = rot(w * Math.cos(ph), b, w * Math.sin(ph));
+    const nK = Math.max(8, Math.ceil(6.283 * w * o.A / (CW * .7)));   // enough points round the body to stay solid however big it gets
+    for (let k = 0; k < nK; k++) {
+      const ph = k * 6.283 / nK, q = rot(w * Math.cos(ph), b, w * Math.sin(ph));
       const ix = Math.round(cx_(o.x + q[0] * o.A)), iy = Math.round(cy_(o.y - q[1] * o.A)); if (ix < 0 || iy < 0 || ix >= COLS || iy >= ROWS) continue;
       const i = iy * COLS + ix; if (q[2] <= FLYZ[i]) continue; FLYZ[i] = q[2];
       const stripe = b < -.02 && (((b * 40) % 1) + 1) % 1 < .3, I = (.55 + .25 * Math.sin(ph)) * o.alpha * bf;
@@ -2324,7 +2332,7 @@ SCENES.push({
       if (kr > 0) box(cx - kr, bowY - kr, cx + kr, bowY + kr, (i, px, py) => { if ((px - cx) * (px - cx) + (py - bowY) * (py - bowY) < kr * kr) { R[i] = 1; G[i] = .6; B[i] = .75; GL[i] = 64; } });
     }
     if (t > 8.6) {                                     // "Happy Birthday / Qi Xuan" written in
-      const span = this.tx1 - this.tx0, w1 = this.tx0 + span * easeInOut((t - 8.6) / 1.4), w2 = this.tx0 + span * easeInOut((t - 9.4) / 1.4);
+      const span = this.tx1 - this.tx0, w1 = this.tx0 + span * easeInOut((t - 8.6) / 2.6), w2 = this.tx0 + span * easeInOut((t - 10.9) / 3.0);   // slowly, so it lands
       for (let i = 0; i < N; i++) {
         const a = this.m1[i], b = this.m2[i], px = PX[i];
         if (a > .3 && px < w1) {
