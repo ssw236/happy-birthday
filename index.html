@@ -100,7 +100,7 @@ body.leaving #final{transition:opacity .5s ease}
 <button id="open" type="button" hidden>tap to play &#9825;<span class="zh">轻触开始</span></button>
 <button id="replay" type="button" hidden>tap to replay &#8634;<span class="zh">轻触重播</span></button>
 <div id="fly" hidden><div class="route"><div><b>YYZ</b><small>Toronto</small></div><div><b>PVG</b><small>Shanghai &#19978;&#28023;</small></div></div><div class="track"><i></i><em>&#9992;&#xFE0E;</em></div><div class="info"></div></div>
-<div id="final"><div class="a">January 4 &middot; Toronto &rarr; Shanghai 上海 &middot; welcome home</div><div class="zh">1月4日 · 多伦多 → 上海 · 欢迎回家</div><div class="b">light pink hydrangeas, just for you</div><div class="zh">浅粉色的绣球花，只送给你</div></div>
+<div id="final"><div class="a">January 4 &middot; Toronto &rarr; Shanghai</div><div class="zh">1月4日 · 多伦多 → 上海</div><div class="b">light pink hydrangeas, just for you</div><div class="zh">浅粉色的绣球花，只送给你</div></div>
 <script>
 'use strict';
 /* =====================================================================
@@ -2181,6 +2181,9 @@ SCENES.push({
     const fl = this.wall.base;
     this.ice = { x: W / 2, y: fl + (H - fl) * .45, rx: W * (P ? .5 : .42), ry: (H - fl) * .42, t0: 2.5 };
     this.snow = Array.from({ length: 46 }, () => ({ x: r() * W, y0: r() * H, sp: H * (.03 + r() * .04), sw: r() * 6.28, m: r() }));
+    const inField = () => { for (;;) { const u = r() * 2 - 1, v = r() * 2 - 1; if (u * u + v * v < .72) return [u, v]; } };
+    this.shards = Array.from({ length: P ? 14 : 20 }, () => { const [u, v] = inField(); return { u, v, s: r(), h: r(), ph: r() * 6.28 }; });   // crystals hovering over the ice
+    this.sparks = Array.from({ length: 36 }, () => { const [u, v] = inField(); return { u, v, sp: .25 + r() * .35, off: r(), ph: r() * 6.28 }; });
   },
   drawOrb(t, cx, cy, rr, s, ringA) {
     const rings = front => {                           // two thin tilted rings of sparkles; the far half passes behind the orb
@@ -2266,21 +2269,52 @@ SCENES.push({
       }
     }
     for (let x = 0; x < W; x += CW) { const I = .16 + .06 * Math.sin(x * .03 - t); put(x, base + CH * .2, I * .4, I, I * .85, 95); }   // the floor's edge
-    // the slow orb's frost: a snowflake spreading out from where it landed, softly glowing, lingering, then melting away
-    if (spread > 0 && life > 0) box(ic.x - ic.rx, ic.y - ic.ry, ic.x + ic.rx, ic.y + ic.ry, (i, px, py) => {
-      if (py < base + CH) return;
-      const u = (px - ic.x) / ic.rx, v = (py - ic.y) / ic.ry, r = Math.sqrt(u * u + v * v); if (r > spread || r > 1) return;
-      const d = this.flake(u, v), lineW = .022 + .012 * (1 - r), front = Math.exp(-Math.pow((spread - r) / .05, 2)) * (spread < 1 ? 1 : 0);
-      let I = .05 + .04 * noise(px * .05, py * .08), g = 46;
-      if (d < lineW) { I = .7 - .25 * r + .2 * Math.sin(t * 2 - r * 9); g = d < lineW * .5 ? 42 : 43; }
-      else if (d < lineW * 2.4) { I = .22; g = 46; }
-      I = (I + front * .6) * life;
-      if (I < .04) return;
-      R[i] += I * .55; G[i] += I; B[i] += I * .95; if (I > .15 || GL[i] < 0 || GL[i] === 46) GL[i] = g;
-    });
-    if (spread > 0 && life > 0) for (let k = 0; k < 6; k++) {   // glints travelling slowly along the six arms
-      const a = k * Math.PI / 3 + Math.PI / 6, q = ((t - ic.t0) * .12 + k * .17) % 1 * Math.min(1, spread), I = Math.sin(q * Math.PI) * life;
-      put(ic.x + Math.cos(a) * q * ic.rx, ic.y + Math.sin(a) * q * ic.ry, I, I, I, 42);
+    // the slow orb's field, like Sage's in the game: a glowing turquoise sheet of cracked ice, each piece lit a little
+    // differently, pale cracks between them, a brighter rim; it spreads from where the orb landed, lingers, then melts away
+    if (spread > 0 && life > 0) {
+      const NU = 6.5, NV = 3.4;
+      box(ic.x - ic.rx, ic.y - ic.ry, ic.x + ic.rx, ic.y + ic.ry, (i, px, py) => {
+        if (py < base + CH * .5) return;
+        const u = (px - ic.x) / ic.rx, v = (py - ic.y) / ic.ry, r = Math.sqrt(u * u + v * v); if (r > spread || r > 1) return;
+        const X = u * NU, Y = v * NV, gx = Math.floor(X), gy = Math.floor(Y);
+        let d1 = 99, d2 = 99, p1x = 0, p1y = 0, p2x = 0, p2y = 0, id = 0;
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {   // the nearest two crack centres (a Voronoi pattern)
+          const cgx = gx + ox, cgy = gy + oy, h1 = hash(cgx * 12.9898 + cgy * 78.233), h2 = hash(cgx * 39.346 + cgy * 11.135);
+          const qx = cgx + .15 + .7 * h1, qy = cgy + .15 + .7 * h2, d = (X - qx) * (X - qx) + (Y - qy) * (Y - qy);
+          if (d < d1) { d2 = d1; p2x = p1x; p2y = p1y; d1 = d; p1x = qx; p1y = qy; id = h1 * 7 + h2; } else if (d < d2) { d2 = d; p2x = qx; p2y = qy; }
+        }
+        const nx = p2x - p1x, ny = p2y - p1y, nl = Math.hypot(nx, ny) || 1, ed = Math.abs((X - (p1x + p2x) / 2) * nx / nl + (Y - (p1y + p2y) / 2) * ny / nl);
+        const facet = ((X - p1x) * -.55 + (Y - p1y) * -.85), wave = .5 + .5 * Math.sin(t * 1.3 + X * 1.1 + Y * 1.9);
+        const rim = smooth(.86, .99, r), front = spread < 1 ? Math.exp(-Math.pow((spread - r) / .05, 2)) : 0;
+        let I = .5 + .18 * hash(id * 3.1) + .2 * facet + .1 * wave + .3 * rim + .5 * front, cr = .16, cg = .92, cb = .78, ch;
+        if (ed < .075 + .02 * (1 - (v + 1) / 2)) {     // a crack: pale, bright, drawn along its own direction
+          I = 1; cr = .7; cg = 1; cb = .94; ch = slopeGlyph(-ny * ic.rx / NU, nx * ic.ry / NV);
+        } else {
+          const gi = Math.floor(clamp(I * 1.02 + (hash(i * 1.7) - .5) * .16) * 5.99);
+          ch = [46, 58, 61, 43, 35, 37][gi];
+          if (I > .82) { cr += .2 * (I - .82); }       // the brightest facets whiten a touch
+        }
+        if (hash(i + Math.floor(t * 5) * 7.1) < .004) { I = 1.2; ch = 42; cr = .9; cg = 1; cb = 1; }   // a glint
+        const al = (1 - smooth(.97, 1, r)) * life, J = Math.min(1.1, I);
+        R[i] += (cr * J - R[i]) * al; G[i] += (cg * J - G[i]) * al; B[i] += (cb * J - B[i]) * al; if (al > .4) GL[i] = ch;
+      });
+      for (const sp of this.sparks) {                  // sparkles drifting up off the ice
+        if (Math.hypot(sp.u, sp.v) > spread) continue;
+        const q = (t * sp.sp + sp.off) % 1, fx = ic.x + sp.u * ic.rx + Math.sin(t * 2 + sp.ph) * CW, fy = ic.y + sp.v * ic.ry - q * H * .16, I = Math.sin(q * Math.PI) * life;
+        if (I > .05) put(fx, fy, I * .7, I, I * .95, q < .5 ? 42 : 46);
+      }
+      for (const sd of this.shards) {                  // crystal shards rising out of the ice to hover above it, bobbing and turning
+        const r0 = Math.hypot(sd.u, sd.v); if (r0 > spread) continue;
+        const rise = easeOut(clamp((t - ic.t0 - .2 - r0 * 1.1) / .8)); if (rise <= 0) continue;
+        const depth = .7 + .5 * (sd.v + 1) / 2, fx = ic.x + sd.u * ic.rx, fy = ic.y + sd.v * ic.ry;
+        const hy = fy - (CH * (2.2 + 2.6 * sd.h) + Math.sin(t * 1.4 + sd.ph) * CH * .5) * rise * depth;
+        const a = CW * (1.8 + 1.6 * sd.s) * depth * (.6 + .4 * Math.abs(Math.cos(t * .9 + sd.ph))), bb = CH * (1.3 + .8 * sd.s) * depth, I = life * rise;
+        box(fx - a, hy - bb, fx + a, hy + bb, (i, px, py) => {
+          const q = Math.abs(px - fx) / a + Math.abs(py - hy) / bb; if (q > 1) return;
+          if (q > .72) { R[i] = .02 * I; G[i] = .32 * I; B[i] = .3 * I; GL[i] = 43; return; }   // a dark teal edge so it stands out against the bright ice
+          const k = 1 - q / .72; R[i] = (.72 + .28 * k) * I; G[i] = I; B[i] = I; GL[i] = k > .5 ? 64 : 35;
+        });
+      }
     }
     const o2 = this.orb;
     if (t < 1.4) {                                     // the last jade sparks of the wing drift apart as Sage appears
@@ -2331,18 +2365,25 @@ SCENES.push({
     if (side) { tb = { x0: W * .04, x1: W * .43, y0: H * .2, y1: H * .72 }; reg = { x: W * .71, y0: H * .04, y1: H * .72, w: W * .56 }; }   // the bouquet ends above the closing words
     else { tb = { x0: W * .05, x1: W * .95, y0: H * .03, y1: H * .33 }; reg = { x: W / 2, y0: H * .34, y1: H * .73, w: W * .96 }; }
     const bq = this.bq = Math.min((reg.y1 - reg.y0) / 2.55, reg.w / 2.7);
-    const cx = this.cx = reg.x, cy = this.cy = (reg.y0 + reg.y1) / 2 - .22 * bq;
     const fontA = s => `${s}px ${BLACK}`, fontB = NAMEFONT;
-    {                                                  // "Happy / Birthday / Qi Xuan", stacked so the letters stay big
-      const tw = tb.x1 - tb.x0, xm = (tb.x0 + tb.x1) / 2, h1 = side ? H * .11 : H * .075;
-      const f1 = Math.min(fitFont('Birthday', fontA, tw * .96, h1), fitFont('Happy', fontA, tw * .96, h1));
-      const f2 = fitFont('Qi Xuan', fontB, tw, side ? H * .2 : H * .11);
+    // "Happy / Birthday / Qi Xuan", stacked so the letters stay big
+    const tw = tb.x1 - tb.x0, h1 = side ? H * .11 : H * .075;
+    const f1 = Math.min(fitFont('Birthday', fontA, tw * .96, h1), fitFont('Happy', fontA, tw * .96, h1));
+    const f2 = fitFont('Qi Xuan', fontB, tw, side ? H * .2 : H * .11);
+    let xm = (tb.x0 + tb.x1) / 2, txW = tw;
+    if (side) {                                        // side by side: the words and the bouquet sit together, centred as one picture
+      txW = Math.max(textWidth('Happy', fontA(f1)), textWidth('Birthday', fontA(f1)), textWidth('Qi Xuan', fontB(f2)));
+      const bW = 3 * bq, gap = Math.max(W * .03, bq * .35), L0 = Math.max(W * .03, (W - (txW + gap + bW)) / 2);
+      xm = L0 + txW / 2; reg.x = L0 + txW + gap + bW / 2;
+    }
+    const cx = this.cx = reg.x, cy = this.cy = (reg.y0 + reg.y1) / 2 - .22 * bq;
+    {
       const top = side ? (tb.y0 + tb.y1) / 2 - (f1 * 2.3 + f2) / 2 : H * .035;
       const y1 = top + f1 * .5, y2 = y1 + f1 * 1.05, y3 = y2 + f1 * .75 + f2 * .5;
       this.m1 = textMask([{ text: 'Happy', font: fontA(f1), x: xm, y: y1 }, { text: 'Birthday', font: fontA(f1), x: xm, y: y2 }]);
       this.m2 = textMask([{ text: 'Qi Xuan', font: fontB(f2), x: xm, y: y3, stroke: f2 * .02 }]);
     }
-    this.tx0 = tb.x0 - CW * 3; this.tx1 = tb.x1 + CW * 3;
+    this.tx0 = (side ? xm - txW / 2 : tb.x0) - CW * 3; this.tx1 = (side ? xm + txW / 2 : tb.x1) + CW * 3;
     const fr = this.fr = bq * .1;
     this.mops = MOP.map((m, k) => ({ x: cx + m[0] * bq, y: cy + m[1] * bq, r: m[2] * bq, t0: 2.5 + MOP_RANK[k] * .45 }));
     for (const m of this.mops) {
