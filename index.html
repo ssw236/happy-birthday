@@ -12,7 +12,7 @@
 <meta property="og:image" content="https://ssw236.github.io/happy-birthday/preview.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A pink envelope sealed with a heart, holding a letter that says Qi Xuan, happy birthday">
+<meta property="og:image:alt" content="A closed pink envelope sealed with a heart, addressed to Qi Xuan">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8C%B8%3C/text%3E%3C/svg%3E">
 <style>[hidden]{display:none!important}body{margin:0}</style>
@@ -92,34 +92,12 @@ body.leaving #final{transition:opacity .5s ease}
 #open{animation:softpulse 2.6s ease-in-out infinite}
 #replay{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);animation:fadein 1.4s ease both,softpulse 2.6s ease-in-out 1.4s infinite}
 #open::before,#open::after,#replay::before,#replay::after,#open .zh::before,#replay .zh::before{display:none}
-/* the note: a soft glowing card, its lines appearing one by one */
-#note{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:max(18px,env(safe-area-inset-top,0px)) 18px calc(env(safe-area-inset-bottom,0px) + 70px);background:radial-gradient(ellipse at center,rgba(10,3,10,.86),rgba(6,3,8,.66) 75%);opacity:0;transition:opacity 1.2s ease;pointer-events:none}
-#note.on{opacity:1}
-#note .card{max-width:min(86vw,440px);padding:1.3em 1.5em 1.1em;border-radius:18px;background:linear-gradient(180deg,rgba(52,18,40,.66),rgba(28,9,22,.6));border:1px solid rgba(255,190,215,.35);box-shadow:0 0 44px rgba(255,120,175,.18),inset 0 1px 0 rgba(255,255,255,.12);font:500 clamp(19px,1vw + 14px,25px)/1.38 var(--hand);color:#ffeef5;text-shadow:0 0 12px rgba(255,140,185,.45),0 1px 2px rgba(0,0,0,.8)}
-#note .l{opacity:0;transform:translateY(6px);transition:opacity 1.2s ease,transform 1.2s ease;margin:.3em 0}
-#note.on .l{opacity:1;transform:none}
-#note.on .l:nth-child(1){transition-delay:.6s}#note.on .l:nth-child(2){transition-delay:1.8s}#note.on .l:nth-child(3){transition-delay:3.8s}#note.on .l:nth-child(4){transition-delay:5.3s}#note.on .l:nth-child(5){transition-delay:6.3s}
-#note .zh{font-size:.82em;margin-top:.5em}
-#note .sig{text-align:right;margin-top:.5em}
-#notebtn{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);transform:translateX(-50%);z-index:6;width:clamp(62px,4vw + 44px,88px);background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;animation:fadein 1.4s ease both,letterpulse 1.9s ease-in-out 1.4s infinite}
-#notebtn svg{display:block;width:100%;height:auto;overflow:visible}
-@keyframes letterpulse{0%,100%{transform:translateX(-50%) scale(1);filter:drop-shadow(0 0 5px rgba(255,130,180,.5))}50%{transform:translateX(-50%) scale(1.12);filter:drop-shadow(0 0 16px rgba(255,130,180,.95))}}
-@media (prefers-reduced-motion: reduce){#notebtn{animation:fadein 1.4s ease both}}
-#replay{z-index:6}
 </style>
 <div id="stage"><canvas id="cv" role="img" aria-label="Animated ASCII birthday card for Qi Xuan"></canvas></div>
 <div id="term" aria-live="polite"></div>
 <div id="load" hidden><div>a little something for you</div><div class="zh">送你的一份小心意</div><div class="track"><i></i></div></div>
 <div id="tap" hidden>tap to let it bloom &#9835;<span class="zh">轻触屏幕，让它绽放</span></div>
 <button id="open" type="button" hidden>tap to play &#9825;<span class="zh">轻触开始</span></button>
-<div id="note" hidden><div class="card">
-<div class="l">Qi Xuan,</div>
-<div class="l">happy birthday, baobei. this year asked so much of you: a new city, long nights, practising until your fingertips hurt.</div>
-<div class="l">i'm so proud of you, and i can't wait to celebrate you properly.</div>
-<div class="l zh">生日快乐，宝贝。我爱你。</div>
-<div class="l sig">&mdash; stanley</div>
-</div></div>
-<button id="notebtn" type="button" aria-label="open your letter" hidden><svg viewBox="0 0 64 46" aria-hidden="true"><rect x="2" y="2" width="60" height="42" rx="6" fill="#ffdbe8" stroke="#ff9cc4" stroke-width="2"/><path d="M4 43 L25 24 M60 43 L39 24" stroke="#f0aecb" stroke-width="2" stroke-linecap="round"/><path d="M3.5 6 L32 27 L60.5 6" fill="#ffe8f0" stroke="#e98bb0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M32 35.5c-3.6-3.2-7.4-5.6-7.4-9 0-2.1 1.7-3.6 3.6-3.6 1.5 0 2.8.8 3.8 2.1 1-1.3 2.3-2.1 3.8-2.1 1.9 0 3.6 1.5 3.6 3.6 0 3.4-3.8 5.8-7.4 9z" fill="#e0457f" stroke="#fff" stroke-width="1.2"/></svg></button>
 <button id="replay" type="button" hidden>tap to replay &#8634;<span class="zh">轻触重播</span></button>
 <div id="fly" hidden><div class="route"><div><b>YYZ</b><small>Toronto</small></div><div><b>PVG</b><small>Shanghai &#19978;&#28023;</small></div></div><div class="track"><i></i><em>&#9992;&#xFE0E;</em></div><div class="info"></div></div>
 <div id="final"><div class="a">January 4 &middot; Toronto &rarr; Shanghai 上海 &middot; welcome home</div><div class="zh">1月4日 · 多伦多 → 上海 · 欢迎回家</div><div class="b">light pink hydrangeas, just for you</div><div class="zh">浅粉色的绣球花，只送给你</div></div>
@@ -176,8 +154,7 @@ const NG = 95; // printable ASCII 32..126
 // ---------- DOM ----------
 const stage = document.getElementById('stage'), cv = document.getElementById('cv');
 const term = document.getElementById('term'), openBtn = document.getElementById('open');
-const replayBtn = document.getElementById('replay'), finalEl = document.getElementById('final'), noteEl = document.getElementById('note'), noteBtn = document.getElementById('notebtn');
-let noteAt = -1;                                       // when the note was opened (scene time), or -1
+const replayBtn = document.getElementById('replay'), finalEl = document.getElementById('final');
 const flyEl = document.getElementById('fly'), flyBar = flyEl.querySelector('.track i'), flyPlane = flyEl.querySelector('.track em'), flyInfo = flyEl.querySelector('.info');
 const tapEl = document.getElementById('tap'), loadEl = document.getElementById('load'), loadBar = loadEl.querySelector('i');
 
@@ -542,7 +519,7 @@ function ui() {
   if (si > 0) opened = true;
   openBtn.hidden = true; flyEl.hidden = true;
   if (!sc.boot) { loadEl.hidden = true; tapEl.hidden = true; }
-  if (!sc.final) { replayBtn.hidden = true; noteBtn.hidden = true; }   // they appear near the end, after the last words (a tap there must not hide them)
+  if (!sc.final) replayBtn.hidden = true;              // it appears near the end, after the last words (a tap there must not hide it)
 }
 function go(k) {
   const cur = SCENES[si]; if (cur && cur.exit) cur.exit();
@@ -571,9 +548,8 @@ function frame(now) {
   const k = Math.min(1, dt * 2.5), b0 = sc.bg0 || [.02, .01, .024], b1 = sc.bg1 || [.03, .012, .03];
   for (let c = 0; c < 3; c++) { bgA[c] += (b0[c] - bgA[c]) * k; bgB[c] += (b1[c] - bgB[c]) * k; }
   capsUpdate(st);
-  finalEl.classList.toggle('on', !!sc.final && st > 15.0 && !leaving && noteAt < 0);
-  if (sc.final && st > 16.6 && noteAt < 0 && noteBtn.hidden && !leaving) noteBtn.hidden = false;           // "a note for you"
-  if (sc.final && noteAt >= 0 && st > noteAt + 8.2 && replayBtn.hidden && !leaving) replayBtn.hidden = false;   // then, once it's read, replay
+  finalEl.classList.toggle('on', !!sc.final && st > 15.0 && !leaving);
+  if (sc.final && st > 16.6 && replayBtn.hidden && !leaving) replayBtn.hidden = false;
   renderer.draw(bgA, bgB, sc.glow === undefined ? .6 : sc.glow);
 }
 // browsers only allow sound after a tap or key press, so the first one anywhere turns it on
@@ -614,20 +590,19 @@ function openGift() {
 let leaving = false;
 function restart() {
   if (leaving) return;
-  leaving = true; replayBtn.hidden = true; noteBtn.hidden = true; noteEl.classList.remove('on'); finalEl.classList.remove('on'); document.body.classList.add('leaving');
+  leaving = true; replayBtn.hidden = true; finalEl.classList.remove('on'); document.body.classList.add('leaving');
   stopLoop(); if (AC && BUS) BUS.gain.setTargetAtTime(0, AC.currentTime, .25);
   const sc = SCENES[si]; sc.dur = st + 1.0;           // the scene fades to black over its last second
 }
 function doRestart() {
   leaving = false; document.body.classList.remove('leaving');
-  opened = false; bootReady = false; bootMel = false; noteAt = -1; noteEl.hidden = true;
+  opened = false; bootReady = false; bootMel = false;
   for (const sc of SCENES) if (sc.final) sc.dur = Infinity;
   const b = SCENES[0]; delete b.exitAt; delete b.bloomAt; delete b.musicOn; b.dur = Infinity;
   go(0);                                               // back to the gift, waiting for "tap to play" again
 }
 replayBtn.addEventListener('click', restart);
-function openNote() { noteAt = st; noteBtn.hidden = true; noteEl.hidden = false; setTimeout(() => noteEl.classList.add('on'), 30); }
-addEventListener('click', () => { if (!noteBtn.hidden) openNote(); else if (!replayBtn.hidden) restart(); });   // at the end, a tap anywhere opens the note, then replays
+addEventListener('click', () => { if (!replayBtn.hidden) restart(); });   // at the end, a tap anywhere replays
 addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && SCENES[si].boot && !opened) { e.preventDefault(); tapToPlay(); }
 });
