@@ -1851,32 +1851,41 @@ SCENES.push({
   cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [3.3, () => roll([70, 74, 77, 82, 86], 0, .06, .2)]]
     .concat([5.2, 6.8, 8.4, 10].map((x, k) => [x, () => piano(k % 2 ? 89 : 86, 0, .13, 2.4)])),
   init() {
-    const r = rng(77), K = Math.max(5, Math.round(W / Math.max(64, S * .3))), bw = this.bw = W / K;
-    this.blocks = Array.from({ length: K }, (_, k) => ({ x0: k * bw, xc: (k + .5) * bw, h: H * (.36 + .12 * r()), pk: (r() - .5) * .5, d: Math.abs(k - (K - 1) / 2) * .07, s: r() * 10 }));
-    this.orb = { x: W / 2, y: H * .38, r: Math.min(W, H) * .17 };
-    this.orbit = Array.from({ length: 60 }, () => ({ a: r() * 6.28, h: r() - .5, rad: 1.25 + r() * .55, sp: (.5 + r() * .7) * (r() < .5 ? 1 : -1) }));
-    this.rise = Array.from({ length: 48 }, () => ({ x: r(), sp: .06 + r() * .1, ph: r(), sw: r() * 6.28 }));
+    const r = rng(77), P = W < H, K = Math.max(5, Math.round(W / Math.max(70, S * .34))), bw = W / K;
+    // two rows of jade crystal prisms: a taller, dimmer row behind, a brighter row in front
+    const mk = (k, back) => ({ xc: (k + (back ? 0 : .5) + (r() - .5) * .25) * bw, hw: bw * (back ? .34 : .42) * (.8 + .4 * r()), h: H * (back ? .34 + .14 * r() : .22 + .16 * r()), lean: (r() - .5) * .3,
+      d: Math.abs(k + (back ? -.5 : 0) - (K - 1) / 2) * .08 + (back ? .18 : 0), back, ph: r() * 1.4 });
+    this.prisms = Array.from({ length: K + 1 }, (_, k) => mk(k, true)).concat(Array.from({ length: K }, (_, k) => mk(k, false)));
+    this.orb = { x: W / 2, y: H * (P ? .34 : .33), r: Math.min(W, H) * (P ? .2 : .16) };
+    this.orbit = Array.from({ length: 56 }, (_, k) => ({ a: (k >> 1) / 28 * 6.283, ring: k % 2 }));
+    this.rise = Array.from({ length: 30 }, () => ({ x: r(), sp: .05 + r() * .08, ph: r(), sw: r() * 6.28 }));
   },
   draw(t) {
-    for (const p of this.rise) {                       // healing + rising everywhere
-      const y = H - ((t * p.sp * H + p.ph * H) % (H * .9)), I = .35 * (1 - (H - y) / (H * .9));
+    for (const p of this.rise) {                       // soft healing motes drifting upward
+      const y = H - ((t * p.sp * H + p.ph * H) % (H * .9)), I = .26 * (1 - (H - y) / (H * .9));
       put(p.x * W + Math.sin(t * 1.4 + p.sw) * CW * 2, y, I * .5, I, I * .8, 43);
     }
-    const bw = this.bw;
-    for (const bl of this.blocks) {                    // the ice wall
-      const e = easeBack((t - .9 - bl.d) / .7); if (e <= 0) continue;
-      const h = bl.h * e, top = H - h, pkx = bl.xc + bl.pk * bw;
-      box(bl.x0, top - 2, bl.x0 + bw, H, (i, px, py) => {
-        const edgeY = top + Math.abs(px - pkx) * .9; if (py < edgeY) return;
-        const lx = (px - bl.xc) / (bw / 2);
-        if (Math.abs(lx) > .94) { R[i] = .05; G[i] = .16; B[i] = .16; GL[i] = 124; return; }
-        const g = clamp(1 - (py - top) / h);
-        let I = (.12 + .3 * g) * (px < pkx ? .85 : .58), ch = -1;
-        if (Math.abs(noise(px * .02 + bl.s, py * .02) - .5) < .03) { I = .6; ch = hash(i) < .5 ? 47 : 92; }
-        if (py - edgeY < CH * .9) I = Math.max(I, .7);
-        if (hash(i + Math.floor(t * 5) * 7.1) < .004) { I = 1; ch = 42; }
-        R[i] = I * (.4 + .25 * g); G[i] = I * .98; B[i] = I * .86; GL[i] = ch;
+    for (const p of this.prisms) {                     // the crystal barrier rising from the ground, from the middle outward
+      const e = easeBack((t - .9 - p.d) / .75); if (e <= 0) continue;
+      const h = p.h * e, yTop = H - h, ap = p.hw * 1.5, dim = p.back ? .45 : 1, cu = CW / p.hw, fade = Math.min(1, e * 1.4), lx = p.lean * h;
+      box(p.xc - p.hw - Math.abs(lx), yTop, p.xc + p.hw + Math.abs(lx), H, (i, px, py) => {
+        const u = (px - p.xc - lx * (H - py) / h) / p.hw, au = Math.abs(u), yEdge = yTop + au * ap; if (au > 1 || py < yEdge) return;
+        const g = clamp((py - yTop) / h), cap = py < yTop + ap;
+        const fc = cap ? (u < 0 ? 0 : 2) : (u < -.36 ? 0 : u < .36 ? 1 : 2);
+        let I = [.62, .42, .26][fc] * (1 - .45 * g), ch = [58, 46, 46][fc];       // see-through faces: lit, middle, shaded
+        if (fc < 2 && ((((py * .7 - px) / (CW * 9) + p.ph) % 1) + 1) % 1 < .07) { I = .85; ch = 47; }   // diagonal glints across the glass
+        const band = Math.exp(-Math.pow((g + .15 - (t * .3 + p.ph) % 1.5) / .06, 2)); I += .45 * band; if (band > .5 && ch === 46) ch = 58;   // light sliding up through it
+        if (py - yEdge < CH * 1.05) { I = 1.1; ch = u < 0 ? 47 : 92; }               // bright top edges
+        else if (!cap && (Math.abs(au - .36) < cu * .6 || au > 1 - cu * 1.1)) { I = Math.max(I, .95); ch = 124; }   // crisp vertical edges
+        else if (cap && Math.abs(u) < cu * .6) { I = .95; ch = 124; }             // the ridge up to the point
+        if (hash(i + Math.floor(t * 6) * 7.1) < .006) { I = 1.25; ch = 42; }          // frost glints
+        const k = I * dim * fade;
+        R[i] = k * (.3 + .36 * (1 - g)); G[i] = k * (.98 - .22 * g); B[i] = k * (.8 - .16 * g); GL[i] = ch;
       });
+    }
+    if (t > 1) for (let x = 0; x < W; x += CW) {      // a soft line of light along the ground
+      const I = .35 * smooth(1, 1.8, t) * (.7 + .3 * Math.sin(x * .05 - t * 2));
+      put(x, H - CH * .5, I * .4, I, I * .85, 95);
     }
     const o2 = this.orb;
     if (t < 1.4) {                                     // the last jade sparks of the wing drift apart as Sage appears
@@ -1884,32 +1893,44 @@ SCENES.push({
       wingZoom(W / 2, H / 2, A, z, ZOOM.F, 1, 1 - smooth(.7, 1.4, t), ZOOM.end + t, .85 + t * .2);
     }
     const fb = t - 3.1;                                // a ring of light as the healing orb is born
-    if (fb > 0 && fb < .9) for (let k = 0; k < 36; k++) {
-      const a = k / 36 * 6.283, d = Math.min(W, H) * .22 * easeOut(fb / .9), I = 1 - fb / .9;
-      put(o2.x + Math.cos(a) * d, o2.y + Math.sin(a) * d * .8, I * .6, I, I * .85, k % 2 ? 43 : 42);
+    if (fb > 0 && fb < .9) for (let k = 0; k < 48; k++) {
+      const a = k / 48 * 6.283, d = Math.min(W, H) * .24 * easeOut(fb / .9), I = 1 - fb / .9;
+      put(o2.x + Math.cos(a) * d, o2.y + Math.sin(a) * d * .85, I * .6, I, I * .85, k % 2 ? 43 : 42);
     }
     const o = this.orb, s = easeBack((t - 3.3) / .9);
     if (s <= 0) return;
-    const rr = o.r * s * (1 + .03 * Math.sin(t * 3)), w = t * .9, cw = Math.cos(w), sw = Math.sin(w);
-    box(o.x - rr * 1.5, o.y - rr * 1.5, o.x + rr * 1.5, o.y + rr * 1.5, (i, px, py) => {
-      const dx = (px - o.x) / rr, dy = (py - o.y) / rr, d2 = dx * dx + dy * dy;
-      if (d2 >= 1) { if (d2 < 2.2) { const a = (2.2 - d2) / 1.2 * .22; R[i] += a * .3; G[i] += a; B[i] += a * .75; } return; }
-      const nz = Math.sqrt(1 - d2), rx = dx * cw - nz * sw, rz = dx * sw + nz * cw;
-      const pat = .5 + .5 * Math.sin(Math.atan2(dy, rx) * 5 + rz * 4 + t * 2.4);
-      const lam = Math.max(0, -.45 * dx - .55 * dy + .7 * nz), rim = Math.pow(1 - nz, 3);
-      const sp = Math.pow(Math.max(0, -.35 * dx - .45 * dy + .82 * nz), 28), L = .28 + .42 * lam + .28 * pat * nz;
-      R[i] = L * .22 + rim * .5 + sp; G[i] = L * .95 + rim * .9 + sp; B[i] = L * .68 + rim * .8 + sp; GL[i] = -1;
+    const rr = o.r * s * (1 + .025 * Math.sin(t * 2.6));
+    const rings = front => {                           // two thin tilted rings of sparkles; the far half passes behind the orb
+      for (const p of this.orbit) {
+        const a = p.a + t * (p.ring ? -.5 : .6), c = Math.cos(a), z = Math.sin(a), tl = p.ring ? .32 : -.24;
+        if ((z > 0) !== front) continue;
+        const x3 = c * rr * 1.42, y3 = z * rr * 1.42 * .2 + c * rr * 1.42 * tl, I = (front ? .95 : .35) * Math.min(1, s);
+        put(o.x + x3, o.y + y3, I * .55, I, I * .85, front ? (p.ring ? 42 : 43) : 46);
+      }
+    };
+    rings(false);
+    box(o.x - rr * 1.6, o.y - rr * 1.6, o.x + rr * 1.6, o.y + rr * 1.6, (i, px, py) => {
+      const dx = (px - o.x) / rr, dy = (py - o.y) / rr, d = Math.sqrt(dx * dx + dy * dy);
+      if (d >= 1) {                                    // a soft halo, fading out
+        if (d < 1.6) { const a = Math.pow((1.6 - d) / .6, 2) * .12 * Math.min(1, s); R[i] += a * .3; G[i] += a; B[i] += a * .8; }
+        return;
+      }
+      const nz = Math.sqrt(1 - d * d), core = Math.pow(1 - d, 2), fres = Math.pow(1 - nz, 2.4);
+      const swirl = .5 + .5 * Math.sin(Math.atan2(dy, dx) * 2 + d * 7 - t * 2.2);   // two arms of light turning inside
+      const spec = Math.pow(Math.max(0, -.4 * dx - .5 * dy + .77 * nz), 30);         // the highlight, top left
+      let L = .16 + .62 * core + .2 * swirl * (1 - d * .8) + .5 * fres;
+      if (d > .9) L = Math.max(L, 1);                  // a crisp bright rim
+      R[i] = L * .3 + spec + core * .35; G[i] = L * .98 + spec; B[i] = L * .78 + spec + core * .2; GL[i] = spec > .5 ? 64 : -1;
     });
-    for (const p of this.orbit) {                      // + orbiting the orb, hidden when behind it
-      const a = p.a + t * p.sp, R3 = rr * p.rad, x3 = Math.cos(a) * R3, z3 = Math.sin(a) * R3, y3 = p.h * rr * 1.7 + z3 * .22;
-      if (z3 < 0 && x3 * x3 + y3 * y3 < rr * rr) continue;
-      const I = (.45 + .4 * (z3 / R3 * .5 + .5)) * s;
-      put(o.x + x3, o.y + y3, I * .5, I, I * .8, 43);
+    for (let k = 0; k < 7; k++) {                      // little sparkles inside
+      const a = k * .9 + t * (k % 2 ? .7 : -.5), d = (.25 + .5 * hash(k + 3)) * rr, I = .55 + .45 * Math.sin(t * 4 + k * 2);
+      put(o.x + Math.cos(a) * d, o.y + Math.sin(a) * d * .9, I, I, I, 43);
     }
+    rings(true);
     for (const tp of [5.2, 6.8, 8.4, 10]) {            // healing pulses
       const u = t - tp; if (u < 0 || u > 1.4) continue;
-      const pr = rr + u * S * .9, I = (1 - u / 1.4) * .8, n = Math.max(12, Math.floor(6.283 * pr / (CW * 1.6)));
-      for (let k = 0; k < n; k++) { const a = k / n * 6.283; put(o.x + Math.cos(a) * pr, o.y + Math.sin(a) * pr, I * .5, I, I * .8, 43); }
+      const pr = rr * 1.1 + u * S * .9, I = (1 - u / 1.4) * .6, n = Math.max(16, Math.floor(6.283 * pr / (CW * 1.6)));
+      for (let k = 0; k < n; k++) { const a = k / n * 6.283; put(o.x + Math.cos(a) * pr, o.y + Math.sin(a) * pr * .9, I * .5, I, I * .8, k % 2 ? 43 : 46); }
     }
   }
 });
