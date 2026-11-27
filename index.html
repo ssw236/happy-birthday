@@ -28,7 +28,7 @@ html,body{height:100%;background:var(--bg);overflow:hidden}
 body{color:var(--ink);font-family:var(--mono);-webkit-tap-highlight-color:transparent}
 #stage{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
 #cv{display:block;width:100%;height:100%}
-#term{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 6.5vh);padding-inline:max(20px,env(safe-area-inset-left,0px));text-align:center;font:500 clamp(28px,1.8vw + 18px,44px)/1.2 var(--hand);color:#ffe8f1;letter-spacing:.01em;pointer-events:none;opacity:0;text-shadow:0 0 18px rgba(255,140,185,.5),0 1px 3px rgba(0,0,0,.95)}
+#term{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 11vh);padding-inline:max(20px,env(safe-area-inset-left,0px));text-align:center;font:500 clamp(28px,1.8vw + 18px,44px)/1.2 var(--hand);color:#ffe8f1;letter-spacing:.01em;pointer-events:none;opacity:0;text-shadow:0 0 18px rgba(255,140,185,.5),0 1px 3px rgba(0,0,0,.95)}
 #load{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);text-align:center;pointer-events:none;font:500 clamp(20px,1vw + 15px,28px) var(--hand);color:var(--ink);text-shadow:0 0 14px rgba(255,140,185,.55);white-space:nowrap}
 .zh{display:block;font-family:var(--zh);font-weight:400;font-size:.6em;letter-spacing:.14em;color:#f6cfe0;margin-top:.2em}
 #term .zh{font-size:.64em}
@@ -537,8 +537,8 @@ function frame(now) {
   const k = Math.min(1, dt * 2.5), b0 = sc.bg0 || [.02, .01, .024], b1 = sc.bg1 || [.03, .012, .03];
   for (let c = 0; c < 3; c++) { bgA[c] += (b0[c] - bgA[c]) * k; bgB[c] += (b1[c] - bgB[c]) * k; }
   capsUpdate(st);
-  finalEl.classList.toggle('on', !!sc.final && st > 14.2 && !leaving);
-  if (sc.final && st > 15.8 && replayBtn.hidden && !leaving) replayBtn.hidden = false;
+  finalEl.classList.toggle('on', !!sc.final && st > 15.0 && !leaving);
+  if (sc.final && st > 16.6 && replayBtn.hidden && !leaving) replayBtn.hidden = false;
   renderer.draw(bgA, bgB, sc.glow === undefined ? .6 : sc.glow);
 }
 // browsers only allow sound after a tap or key press, so the first one anywhere turns it on
@@ -2300,7 +2300,7 @@ SCENES.push({
     }
     for (const o of this.orch) this.orchid(o, t);
     // the front of the paper cone, with folds; then the ribbon wraps round it and ties itself into a bow
-    const rev = easeOut((t - .4) / 1.4), revY = tipY - (tipY - (cy + .4 * bq)) * rev, wrap = easeInOut((t - 2.1) / .45);
+    const rev = easeOut((t - .4) / 1.4), revY = tipY - (tipY - (cy + .4 * bq)) * rev, wrap = easeInOut((t - 7.8) / .45);   // after the last flowers have bloomed
     if (rev > 0) box(cx - hw0 * 1.1, cy + .4 * bq, cx + hw0 * 1.1, tipY, (i, px, py) => {
       if (py < revY) return;
       const dx = px - cx, ty = topBase + .035 * bq * Math.sin(dx / bq * 10); if (py < ty) return;
@@ -2314,7 +2314,7 @@ SCENES.push({
       R[i] = I; G[i] = I * .95; B[i] = I * .9; GL[i] = -1;
       if (rim) GL[i] = 126; else if (pl > .93) GL[i] = dx < 0 ? 92 : 47;
     });
-    const tie = t - 2.55;                              // a knot, then each loop pulled out in turn, then the tails drop and swing as it tightens
+    const tie = t - 8.25;                              // a knot, then each loop pulled out in turn, then the tails drop and swing as it tightens
     if (tie > 0) {
       const lA = easeBack(clamp(tie / .35)), rA = easeBack(clamp((tie - .22) / .35)), tl = easeOut(clamp((tie - .5) / .4));
       const sw = Math.sin(tie * 7) * Math.exp(-tie * 2.2) * .25;
@@ -2331,8 +2331,8 @@ SCENES.push({
       const kr = Math.max(CW * .7, .05 * bq) * easeBack(clamp(tie / .2));
       if (kr > 0) box(cx - kr, bowY - kr, cx + kr, bowY + kr, (i, px, py) => { if ((px - cx) * (px - cx) + (py - bowY) * (py - bowY) < kr * kr) { R[i] = 1; G[i] = .6; B[i] = .75; GL[i] = 64; } });
     }
-    if (t > 8.6) {                                     // "Happy Birthday / Qi Xuan" written in
-      const span = this.tx1 - this.tx0, w1 = this.tx0 + span * easeInOut((t - 8.6) / 2.6), w2 = this.tx0 + span * easeInOut((t - 10.9) / 3.0);   // slowly, so it lands
+    if (t > 9.4) {                                     // "Happy Birthday / Qi Xuan" written in, once the bow is tied
+      const span = this.tx1 - this.tx0, w1 = this.tx0 + span * easeInOut((t - 9.4) / 2.6), w2 = this.tx0 + span * easeInOut((t - 11.7) / 3.0);   // slowly, so it lands
       for (let i = 0; i < N; i++) {
         const a = this.m1[i], b = this.m2[i], px = PX[i];
         if (a > .3 && px < w1) {
@@ -2366,6 +2366,8 @@ SCENES.push({
   const sc = SCENES.find(s => s.caps && s.caps.some(c => c.text === cap));
   if (sc) sc.cues.push([at, () => { roll([53, 57, 60, 65, 69, 72], 0, .11, .26); sparkle(.5, 1.2, 3, .11); }]);
 });
+
+SCENES.find(s => s.final).cues.push([8.3, () => roll([77, 81, 84, 89], 0, .09, .2)]);   // a soft chime as the bow is pulled tight
 
 start();
 </script>
