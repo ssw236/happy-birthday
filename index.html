@@ -749,7 +749,7 @@ SCENES.push({
     if (t > .3 && bud < .02) { const I = .5 + .5 * Math.sin(t * 6); put(cx, cy, I, I * .85, I * .95, 42); }   // a single point of light
     if (bud > 0) drawFlower({
       x: cx, y: cy + S * .12, R: S * .58 * size, open: bloom, fresh: 1 - smooth(.2, 2.6, u),
-      yaw: t * .12, pitch: .25 + .62 * bloom,   // a slow, gentle turn: petals rising on the right step up a whole (tall) row at a time, so they must move slowly
+      yaw: t * .17, pitch: .25 + .62 * bloom,   // a gentle turn: petals rising on the right step up a whole (tall) row at a time, so not too quick
       alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
     }, t);
   }
