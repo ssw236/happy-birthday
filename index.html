@@ -1844,16 +1844,16 @@ SCENES.push({
   }
 });
 
-/* ---------- scene 7: Sage (barrier wall rising, healing orb, + particles) ---------- */
+/* ---------- scene 7: Sage (a slow orb spreads its ice, then a wall of huge ice blocks rises) ---------- */
 SCENES.push({
   dur: 12.5, fadeIn: .01, glow: .85, bg0: [.006, .02, .024], bg1: [.012, .05, .046],
-  caps: [{ at: 4, text: "you take care of everyone" }, { at: 8, text: "let me take care of you" }],
-  cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [3.3, () => roll([70, 74, 77, 82, 86], 0, .06, .2)], [6.65, () => roll([96, 93, 89, 86, 84, 81], 0, .05, .2)]]
+  caps: [{ at: 4.9, text: "you take care of everyone" }, { at: 8.6, text: "let me take care of you" }],
+  cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [1.0, () => roll([70, 74, 77, 82, 86], 0, .06, .2)], [2.5, () => roll([96, 93, 89, 86, 84, 81], 0, .05, .2)], [3.5, () => roll([46, 53, 58, 62, 65], 0, .08, .3)]]
     .concat([5.2, 6.8, 8.4, 10].map((x, k) => [x, () => piano(k % 2 ? 89 : 86, 0, .13, 2.4)])),
   init() {
     const r = rng(77), P = W < H;
     // a row of glowing jade ice blocks standing on a dark floor
-    const nB = 3, Wt = Math.min(W * (P ? .92 : .72), H * 1.6), bw = Wt / nB, bh = bw * .95, x0 = (W - Wt) / 2;
+    const nB = 3, Wt = Math.min(W * (P ? .94 : .86), H * 1.9), bw = Wt / nB, bh = bw * (P ? 1.55 : 1.2), x0 = (W - Wt) / 2;
     this.wall = { nB, bw, bh, x0, base: H * (P ? .6 : .7), top: bw * .09, side: bw * .1 };
     this.blocks = Array.from({ length: nB }, (_, k) => ({ x: x0 + k * bw, d: Math.abs(k - (nB - 1) / 2) * .16, s: r() * 9 }));
     this.horizon = H * (P ? .52 : .57);
@@ -1861,8 +1861,7 @@ SCENES.push({
     this.orbit = Array.from({ length: 56 }, (_, k) => ({ a: (k >> 1) / 28 * 6.283, ring: k % 2 }));
     this.rise = Array.from({ length: 26 }, () => ({ x: r(), sp: .05 + r() * .08, ph: r(), sw: r() * 6.28 }));
     // where the orb lands, and the frost it spreads across the floor
-    this.ice = { x: W / 2, y: H * (P ? .74 : .83), rx: W * (P ? .66 : .56), ry: H * (P ? .14 : .1), t0: 6.65 };
-    this.shards = Array.from({ length: 40 }, () => ({ q: .12 + .85 * Math.sqrt(r()), a: r() * 6.283, h: CH * (2 + r() * 3.2), n: 2 + Math.floor(r() * 2.5) }));
+    this.ice = { x: W / 2, y: H * (P ? .74 : .83), rx: W * (P ? .68 : .62), ry: H * (P ? .14 : .1), t0: 2.5 };
   },
   drawOrb(t, cx, cy, rr, s, ringA) {
     const o = this.orb;
@@ -1899,7 +1898,7 @@ SCENES.push({
       put(p.x * W + Math.sin(t * 1.4 + p.sw) * CW * 2, y, I * .5, I, I * .8, 43);
     }
     // the floor: dark green, lit by the blocks; later the orb's frost spreads across it
-    const wallUp = smooth(.9, 2.2, t), spread = easeOut((t - ic.t0) / .45), life = 1 - smooth(11.4, 12.4, t), pulse = Math.exp(-Math.max(0, t - ic.t0) * 2.5) * (t > ic.t0 ? 1 : 0);
+    const wallUp = smooth(3.5, 4.6, t), spread = easeOut((t - ic.t0) / .85), life = 1 - smooth(11.4, 12.4, t), pulse = Math.exp(-Math.max(0, t - ic.t0) * 2.5) * (t > ic.t0 ? 1 : 0);
     box(0, hz, W, H, (i, px, py) => {
       const depth = (py - hz) / (H - hz);
       let L = (.015 + .02 * noise(px * .03, py * .09)) * (.4 + .6 * depth), r = L * .35, g = L, b = L * .8, ch = -1;
@@ -1919,23 +1918,9 @@ SCENES.push({
       }
       if (r + g + b > .02) { R[i] = r; G[i] = g; B[i] = b; GL[i] = ch; }
     });
-    for (const sh of this.shards) {                    // jagged ice crystals burst up as the field opens, linger, then crumble
-      if (spread < sh.q || life <= 0) continue;
-      const bx = ic.x + Math.cos(sh.a) * sh.q * ic.rx, by = ic.y + Math.sin(sh.a) * sh.q * ic.ry;
-      if (by < base + CH) continue;
-      const grow = easeBack(clamp((t - ic.t0 - sh.q * .4) / .3)) * (.4 + .6 * life);
-      for (let j = 0; j < sh.n; j++) {
-        const off = j - (sh.n - 1) / 2, x = bx + off * CW * 1.5, h = sh.h * (off === 0 ? 1 : .62) * grow * (.8 + .4 * hash(j + sh.a)), tip = x + off * CW * .7;
-        if (h < CH * .6) continue;
-        lineSeg(x - CW * .8, by, tip, by - h, 1, .55, 1, .92, .95 * life, 0, 47);
-        lineSeg(x + CW * .8, by, tip, by - h, 1, .4, .85, .8, .7 * life, 0, 92);
-        lineSeg(x, by, tip, by - h * .85, 1, .7, 1, .95, .55 * life, 0, 124);
-        put(tip, by - h, life, life, life, 94);
-      }
-    }
     // the ice blocks, each rising out of the floor (the middle one first), cloudy jade ice, brightest at the top
     this.blocks.forEach((bk, k) => {
-      const e = easeBack((t - .9 - bk.d) / .8); if (e <= 0) return;
+      const e = easeBack((t - 3.5 - bk.d) / .9); if (e <= 0) return;
       const bh = wl.bh * Math.min(1.04, e), yT = base - bh, last = k === wl.nB - 1, tp = wl.top, sd = wl.side;
       box(bk.x, yT - tp, bk.x + wl.bw + (last ? sd : 0), base, (i, px, py) => {
         let u = (px - bk.x) / wl.bw, v = (py - yT) / wl.bh, face = 0;
@@ -1960,17 +1945,17 @@ SCENES.push({
       const A = Math.min(W * .44, H * .46), z = ZOOM.z0 * Math.exp((ZOOM.end - ZOOM.t0 + t) * ZOOM.rate);
       wingZoom(W / 2, H / 2, A, z, ZOOM.F, 1, 1 - smooth(.7, 1.4, t), ZOOM.end + t, .85 + t * .2);
     }
-    const fb = t - 3.1;                                // a ring of light as the orb is born
+    const fb = t - .8;                                // a ring of light as the orb is born
     if (fb > 0 && fb < .9) for (let k = 0; k < 48; k++) {
       const a = k / 48 * 6.283, d = Math.min(W, H) * .2 * easeOut(fb / .9), I = 1 - fb / .9;
       put(o2.x + Math.cos(a) * d, o2.y + Math.sin(a) * d * .85, I * .6, I, I * .85, k % 2 ? 43 : 42);
     }
-    const s = easeBack((t - 3.3) / .9);
+    const s = easeBack((t - 1.0) / .7);
     if (s > 0 && t < ic.t0) {                          // the orb glows above the wall, then is thrown: it arcs toward us and lands in front
       const pos = u => [o2.x + (ic.x - o2.x) * u, o2.y + (ic.y - o2.y) * u * u - H * .14 * Math.sin(u * Math.PI) * (1 - .3 * u)];
-      const u = clamp((t - 6.05) / (ic.t0 - 6.05)), p = pos(u), rr = o2.r * s * (1 + .025 * Math.sin(t * 2.6)) * (1 + .45 * u * u);
+      const u = clamp((t - 1.85) / (ic.t0 - 1.85)), p = pos(u), rr = o2.r * s * (1 + .025 * Math.sin(t * 2.6)) * (1 + .45 * u * u);
       if (u > 0) for (let k = 1; k <= 12; k++) { const q = pos(Math.max(0, u - k * .03)), I = (1 - k / 13) * .85; put(q[0] + (hash(k + Math.floor(t * 20)) - .5) * CW * 2, q[1], I * .5, I, I * .9, k % 2 ? 42 : 43); }
-      this.drawOrb(t, p[0], p[1], rr, Math.min(1, s), 1 - smooth(5.8, 6.15, t));
+      this.drawOrb(t, p[0], p[1], rr, Math.min(1, s), 1 - smooth(1.6, 1.9, t));
     }
     if (t > ic.t0 && t < ic.t0 + 1.1) {               // it detonates: a flash, a ring racing out, and a spray of ice shards
       const u = t - ic.t0, I0 = Math.max(0, 1 - u / 1.1);
@@ -1992,11 +1977,12 @@ SCENES.push({
         const x = ic.x + Math.cos(a) * q * ic.rx, y0 = ic.y + Math.sin(a) * q * ic.ry;
         if (y0 < base + CH) continue;
         const rise = (t * .05 + ph) % 1, I = Math.sin(rise * Math.PI) * .75 * life;
-        put(x + Math.sin(t * .4 + k) * CW, y0 - rise * Math.min(H * .12, ic.ry * 1.2), I * .6, I, I * .95, rise > .5 ? 46 : 43);
+        const i = cellIdx(x + Math.sin(t * .4 + k) * CW, y0 - rise * Math.min(H * .12, ic.ry * 1.2));   // added on top, so the frost under it stays bright
+        if (i >= 0 && I > .05) { R[i] += I * .6; G[i] += I; B[i] += I * .95; GL[i] = rise > .5 ? 46 : 43; }
       }
       for (let k = 0; k < 2; k++) {
         const v = ((t - ic.t0) * .09 + k * .5) % 1, I = Math.sin(v * Math.PI) * .35 * life, n = 64;
-        for (let j = 0; j < n; j++) { const a = j / n * 6.283; put(ic.x + Math.cos(a) * ic.rx * v, ic.y + Math.sin(a) * ic.ry * v, I * .5, I, I * .9, 46); }
+        if (v > .06) for (let j = 0; j < n; j++) { const a = j / n * 6.283, i = cellIdx(ic.x + Math.cos(a) * ic.rx * v, ic.y + Math.sin(a) * ic.ry * v); if (i >= 0) { R[i] += I * .5; G[i] += I; B[i] += I * .9; } }
       }
     }
   }
