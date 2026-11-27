@@ -1129,7 +1129,7 @@ const GOAT_BOX = [-.82, 1.1, -.84, .78], CRAB_BOX = [-1.06, 1.06, -.74, .76];
 const heartPt = (a, s) => [16 * Math.pow(Math.sin(a), 3) / 17 * s, -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) / 17 * s];
 
 SCENES.push({
-  dur: 16, glow: .8, bg0: [.008, .008, .035], bg1: [.03, .012, .05],
+  dur: 14.6, glow: .8, bg0: [.008, .008, .035], bg1: [.03, .012, .05],   // ends as the last caption fades, no dead pause
   caps: [{ at: 6, text: "you, my little capricorn", zh: "你，我的小摩羯" }, { at: 9.4, text: "and me, right beside you", zh: "而我，一直在你身边" }],
   cues: [[.15, () => playBars([['Dm'], ['Bb'], THEME_B[0], THEME_B[1]], 0, .8, .44)], [9.6, () => sparkle(0, 1, 4, .15)]]
     .concat(CAP.filter((s, k) => k % 2 === 0).map((s, k) => [1.2 + k * .4, () => piano([77, 81, 84, 86, 89, 91][k % 6], 0, .17, 2.4)]))
@@ -1721,95 +1721,155 @@ SCENES.push({
   }
 });
 
-/* ---------- scene: her guzheng, the strings she practises on, plucked in light ---------- */
+/* ---------- scene: her little goat plays the guzheng while his crab listens ---------- */
 // 21 strings tuned to F major pentatonic, low to high, so the whole scene stays in the gift's key
 const ZSTR = [41, 43, 45, 48, 50, 53, 55, 57, 60, 62, 65, 67, 69, 72, 74, 77, 79, 81, 84, 86, 89];
-// every pluck in the scene: { t: seconds, k: string, v: loudness, b: press-bend in semitones }
+// every pluck: { t: seconds, k: string, v: loudness, b: press-bend in semitones, tune: part of the melody }
+// the melody is her theme; the notes a guzheng doesn't have are made by pressing a string to bend it up, as players do
 const ZEV = (() => {
   const ev = [], sweep = (t0, from, to, step, v) => { const dir = to > from ? 1 : -1; for (let k = from, j = 0; dir > 0 ? k <= to : k >= to; k += dir, j++) ev.push({ t: t0 + j * step, k, v }); };
-  sweep(.6, 6, 20, .045, .32);                                                 // a sweep up the strings to begin
-  const beat = .5, mel = [[0, 15], [.75, 13], [1, 14], [1.5, 15], [2, 16, 1], [3, 15], [3.5, 13], [4, 12], [4.5, 13], [5, 11], [5.5, 10], [6, 12, 2],
-    [8, 15], [8.5, 16], [9, 18], [10, 17], [10.5, 16], [11, 15], [11.5, 13], [12, 14], [13, 15, 1]];
+  sweep(.7, 6, 20, .045, .3);                                                  // a sweep up the strings to begin
+  const beat = .5, mel = [[0, 12], [.5, 13], [1, 15], [2, 14, 2], [3, 13],    // A C F (D bent up to E) C
+    [4, 14], [5, 13], [6, 12],                                                 // D C A
+    [8, 12, 1], [9, 14], [9.5, 15], [10, 14, 2], [11, 14],                     // (A bent to B flat) D F (D bent to E) D
+    [12, 13]];                                                                 // C
   for (const [b, k, bend] of mel) ev.push({ t: 2 + b * beat, k, v: .55, b: bend || 0, tune: true });
-  for (const [b, k] of [[0, 5], [4, 3], [8, 4], [12, 5]]) ev.push({ t: 2 + b * beat, k, v: .36 });   // low strings under the tune
-  sweep(9.3, 20, 4, .05, .26);                                                 // and back down
-  for (const [dt, k] of [[0, 5], [.02, 10], [.04, 15]]) ev.push({ t: 10.4 + dt, k, v: .42 });
+  for (const [b, k] of [[0, 5], [4, 4], [8, 3], [12, 3]]) ev.push({ t: 2 + b * beat, k, v: .34 });   // low strings under the tune
+  sweep(9.0, 20, 4, .05, .24);                                                 // and back down
+  for (const [dt, k] of [[0, 5], [.02, 10], [.04, 15]]) ev.push({ t: 10.0 + dt, k, v: .4 });
+  ev.push({ t: 12.5, k: 20, v: .22 });                                         // one last high note as the light gathers
   return ev.sort((a, b) => a.t - b.t);
 })();
+const ZN = 6;                                                                  // strings drawn: a few, so the pink board shows between them
+const zStr = k => Math.round(k * (ZN - 1) / 20);
 
 SCENES.push({
-  dur: 14, glow: .8, bg0: [.03, .012, .02], bg1: [.07, .03, .035],
+  dur: 14, glow: .8, fadeOut: .25, bg0: [.008, .008, .035], bg1: [.03, .012, .05],
   caps: [{ at: 2.2, text: "your fingers, dancing on the strings", zh: "你的指尖，在琴弦上起舞" }, { at: 8.4, text: "keep practicing, i’ll always be listening", zh: "继续练习吧，我会一直听着" }],
   cues: [[.1, () => {
     for (const e of ZEV) zheng(ZSTR[e.k], e.t - .1, e.v, e.b || 0);
-    for (const [t, c] of [[2, 'F'], [4, 'Dm'], [6, 'Bb'], [8, 'C'], [10.4, 'F']]) LH[c].slice(0, 4).forEach((m, j) => piano(m, t - .1 + j * .03, .2, 3.2));   // soft piano underneath
+    for (const [t, c] of [[2, 'F'], [4, 'Dm'], [6, 'Bb'], [8, 'C'], [10, 'F']]) LH[c].slice(0, 4).forEach((m, j) => piano(m, t - .1 + j * .03, .18, 3.2));   // soft piano underneath
   }]],
   init() {
-    const P = W < H, a = P ? -1.02 : -.17, r = rng(88);
-    const Lg = P ? Math.min(H * .78, W * 2.2) : Math.min(W * .86, H * 2.6);
-    this.g = { cx: W / 2, cy: H * (P ? .48 : .5), d: [Math.cos(a), Math.sin(a)], n: [-Math.sin(a), Math.cos(a)], Lg, hw: Lg * (P ? .12 : .14) };
-    this.dust = Array.from({ length: 50 }, () => ({ x: r() * W, y: r() * H, ph: r() * 6.28, sp: .3 + r() * 1.2 }));
-    this.petals = Array.from({ length: 26 }, () => ({ x: r() * W, ph: r() * H, sp: 10 + r() * 18, sw: r() * 6.28, g: ".,'`".charCodeAt((r() * 4) | 0) }));
+    const P = W < H, r = rng(88);
+    // a little toy guzheng in the middle, clear of the captions; she sits behind it, he sits beside her
+    const Lg = P ? W * .88 : Math.min(W * .56, H * 1.15), a = P ? -.1 : -.08;
+    this.g = { cx: W * (P ? .5 : .4), cy: H * (P ? .52 : .52), d: [Math.cos(a), Math.sin(a)], n: [-Math.sin(a), Math.cos(a)], Lg, hw: Lg * (P ? .14 : .12) };
+    const gs = P ? Math.min(W * .54 / 1.92, H * .24 / 1.62) : Math.min(W * .3 / 1.92, H * .44 / 1.62), hw = this.g.hw;
+    const gp = this.at(P ? .64 : .6, -1);              // her seat: behind the plucking end, legs hidden by the instrument
+    this.goat = { x: gp[0] - gs * .14, y: gp[1] + hw * .85 + GOAT_BOX[2] * gs, s: gs, bx: GOAT_BOX };
+    const cs = gs * (P ? .5 : .68);
+    if (P) { const q = this.at(.1, -1); this.crab = { x: q[0] + cs * .3, y: q[1] - cs * .45, s: cs, bx: CRAB_BOX }; }   // on a phone he perches on the far end
+    else { const q = this.at(1, .1); this.crab = { x: q[0] + CRAB_BOX[1] * cs + CW * 3, y: q[1], s: cs, bx: CRAB_BOX }; }
+    this.stars = Array.from({ length: Math.round(N / 45) }, () => ({ x: r() * W, y: r() * H, m: Math.pow(r(), 3), ph: r() * 6.28, sp: .6 + r() * 2 }));
+    this.florets = Array.from({ length: 9 }, () => ({ x: r() * W, y: r() * H, rad: Math.max(CW * 4, S * (.05 + r() * .04)), sp: 8 + r() * 12, ph: r() * 6.28, rs: (r() - .5) * .8, I: .16 + r() * .12 }));
+    this.hearts = Array.from({ length: 6 }, (_, k) => ({ t0: 9.6 + k * .45, dx: (r() - .5) * cs * 1.2, sz: Math.max(CW * 2.5, cs * (.22 + r() * .12)), sw: r() * 6.28 }));
   },
-  hwAt(u) { return this.g.hw * (.84 + .16 * u); },                           // a touch wider toward the tail
+  hwAt(u) { return this.g.hw * (.9 + .1 * u); },
   at(u, v) { const g = this.g, w = this.hwAt(u) * v, l = (u - .5) * g.Lg; return [g.cx + g.d[0] * l + g.n[0] * w, g.cy + g.d[1] * l + g.n[1] * w]; },
-  vOf(k) { return -.78 + 1.56 * k / 20; },
-  bridgeU(k) { return .7 - .42 * Math.pow(k / 20, 1.15); },                   // the movable bridges: a long diagonal line, like geese in flight
+  vOf(s) { return -.74 + 1.48 * s / (ZN - 1); },
+  bridgeU(s) { return .68 - .36 * Math.pow(s / (ZN - 1), 1.1); },             // the movable bridges, a diagonal line like geese in flight
   draw(t) {
-    const g = this.g, appear = easeOut(t / 1.2);
-    for (const d of this.dust) { const I = Math.pow(Math.max(0, Math.sin(t * d.sp + d.ph)), 8) * .4; if (I > .05) put(d.x, d.y, I, I * .8, I * .7, 46); }
-    for (const p of this.petals) {                     // a few petals drifting by
-      const y = (p.ph + t * p.sp) % (H * 1.1) - H * .05, x = p.x + Math.sin(t * .7 + p.sw) * CW * 3;
-      put(x, y, .5, .26, .36, p.g);
+    const g = this.g, end = 1 - smooth(12.2, 13.3, t); let A = easeOut(t / 1.2) * end;   // everything fades in, and at the end gathers into one point of light
+    for (const s of this.stars) { const I = (.12 + .45 * s.m) * (.55 + .45 * Math.sin(t * s.sp + s.ph)) * Math.min(1, t / 1.5); put(s.x, s.y, I * .9, I * .85, I, s.m > .6 ? 43 : 46); }
+    for (const f of this.florets) {                    // light-pink hydrangea florets drifting by, like at the start
+      const span = H + 2 * f.rad, y = ((f.y + t * f.sp) % span + span) % span - f.rad, x = f.x + Math.sin(t * .4 + f.ph) * CW * 4, rot = f.ph + t * f.rs;
+      box(x - f.rad, y - f.rad, x + f.rad, y + f.rad, (i, px, py) => {
+        const dx = px - x, dy = py - y, d = Math.hypot(dx, dy) / f.rad, a = Math.atan2(dy, dx) - rot, edge = .36 + .64 * Math.pow(Math.abs(Math.cos(2 * a)), .55);
+        if (d > edge) return;
+        const I = f.I * (1 - .35 * d / edge) * A; if (d < .17) { R[i] = I * .9; G[i] = I * .8; B[i] = I * .55; } else { R[i] = I; G[i] = I * .62; B[i] = I * .78; } GL[i] = -1;
+      });
     }
-    // the instrument: rosewood frame, carved head and tail, a light paulownia soundboard with its grain
-    const ext = g.Lg * .55 + g.hw * 1.3;
+    const playing = t > 1.8 && t < 10.6, bob = playing ? -Math.abs(Math.sin(Math.PI * (t - 2) / .5)) * CH * .35 : 0;
+    // her goat, sitting behind the guzheng, eyes closed happily, bobbing to the beat
+    const go = this.goat;
+    drawFigure({ x: go.x, y: go.y + bob, s: go.s, bx: go.bx }, goatLayers({ blink: playing ? .14 : ((t % 3.4) < .14 ? .12 : 1), ear: .14 * Math.sin(t * 2.2) }), () => A);
+    // his crab beside her, swaying along and waving his claws
+    const cr = this.crab, sway = Math.sin(t * Math.PI) * CW * 1.2;
+    drawFigure({ x: cr.x + sway, y: cr.y, s: cr.s, bx: cr.bx }, crabLayers({ blink: (t + 1.3) % 3.1 < .14 ? .12 : 1, wave: t * 6 }), () => A);
+    for (const h of this.hearts) {                     // little hearts rising from him near the end
+      const u = t - h.t0; if (u < 0 || u > 2.4) continue;
+      const hx = cr.x + h.dx + Math.sin(u * 2 + h.sw) * CW * 2, hy = cr.y - cr.s * .9 - u * H * .08, a2 = Math.sin(Math.PI * u / 2.4) * end;
+      box(hx - h.sz, hy - h.sz, hx + h.sz, hy + h.sz, (i, px, py) => { if (heartIn((px - hx) / h.sz * 1.2, -(py - hy) / h.sz * 1.2 + .2)) { const I = .7 * a2; R[i] = I; G[i] = I * .42; B[i] = I * .62; GL[i] = -1; } });
+    }
+    // the guzheng: chunky and round, rose-gold soundboard, plum rosewood frame, a soft outline like the characters
+    const ext = g.Lg * .55 + g.hw * 1.3, ow = Math.max(CW, CH) * .7 / g.hw;
     box(g.cx - ext, g.cy - ext, g.cx + ext, g.cy + ext, (i, px, py) => {
-      const rx = px - g.cx, ry = py - g.cy, u = (rx * g.d[0] + ry * g.d[1]) / g.Lg + .5; if (u < -.005 || u > 1.005) return;
+      const rx = px - g.cx, ry = py - g.cy, u = (rx * g.d[0] + ry * g.d[1]) / g.Lg + .5; if (u < -.03 || u > 1.03) return;
       const v = (rx * g.n[0] + ry * g.n[1]) / this.hwAt(clamp(u)), av = Math.abs(v);
-      if (av > 1.25) return;
-      if (av > 1) { if (v > 0) { const I = .1 * (1.25 - av) / .25 * appear; R[i] = I * .9; G[i] = I * .4; B[i] = I * .55; GL[i] = -1; } return; }   // a soft glow beneath
-      const end = Math.min(u, 1 - u) * g.Lg / g.hw; if (end < .25 && av > .55 + end * 1.6) return;   // rounded ends
+      const ends = Math.min(u, 1 - u) * g.Lg / g.hw, round = ends < .5 ? Math.sqrt(Math.max(0, 1 - Math.pow(1 - ends / .5, 2))) : 1;   // rounded ends
+      const SB = .36, edge = v < 0 ? -v - round : v - round - SB; if (edge > ow * 1.2 + .25) return;   // the top and its front side
+      if (edge > ow * 1.2) { if (v > 0) { const I = .08 * A; R[i] = I * .9; G[i] = I * .4; B[i] = I * .58; GL[i] = -1; } return; }   // a soft glow beneath
+      if (edge > 0) { const I = .3 * A; R[i] = I * 1.1; G[i] = I * .42; B[i] = I * .72; GL[i] = -1; return; }                        // the outline
       let r, gg, b, L, ch = -1;
-      if (av > .88) { r = .5; gg = .2; b = .17; L = v < 0 ? .9 : .6; }        // the rosewood frame
-      else if (u < .075 || u > .935) {                 // carved head and tail, with a little gold
-        r = .46; gg = .18; b = .16; L = .7 + .15 * Math.sin(v * 9);
-        if (Math.sin(u * 260) * Math.sin(v * 7) > .72) { r = 1; gg = .8; b = .42; L = .85; ch = 42; }
-      } else if ((u > .075 && u < .09) || (u > .92 && u < .935)) { r = 1; gg = .93; b = .82; L = .82; ch = 124; }   // the fixed bridges at each end
-      else {                                           // the soundboard
-        const grain = .5 + .5 * Math.sin(u * g.Lg * .07 + noise(u * 6, v * 2) * 4);
-        r = .92; gg = .64; b = .43; L = (.36 + .14 * grain) * (1 - .25 * av) * (.85 + .15 * Math.sin(u * 3.1416));
+      if (v > round) {                                   // the front side: deeper plum, with a thin gold inlay
+        r = .62; gg = .26; b = .48; L = .62; if (Math.abs(v - round - SB * .5) < .045 && u > .1 && u < .9) { r = 1; gg = .8; b = .6; L = .7; }
+      } else if (av > round * .82) { r = .74; gg = .32; b = .56; L = v < 0 ? .95 : .78; }                                // plum rosewood frame
+      else if (u < .08 || u > .93) {                     // the decorated head and tail, little gold flowers
+        r = .7; gg = .3; b = .54; L = .84;
+        if (Math.sin(u * 220) * Math.sin(v * 6) > .7) { r = 1; gg = .82; b = .6; L = .9; ch = 42; }
+      } else if ((u > .08 && u < .095) || (u > .915 && u < .93)) { r = 1; gg = .9; b = .92; L = .85; ch = 124; }   // the fixed bridges
+      else {                                             // a soft hydrangea-pink soundboard with a gentle grain
+        const grain = .5 + .5 * Math.sin(u * g.Lg * .06 + noise(u * 6, v * 2) * 3);
+        r = .98; gg = .64; b = .74; L = (.74 + .1 * grain) * (1 - .2 * av) + .12 * clamp(-v);
       }
-      L *= appear; R[i] = r * L; G[i] = gg * L; B[i] = b * L; GL[i] = ch;
+      L *= A; R[i] = r * L; G[i] = gg * L; B[i] = b * L; GL[i] = ch;
     });
-    // the strings: silver lines from end to end; a plucked string glows and shivers
-    const lastPluck = new Array(21).fill(-9), lastVel = new Array(21).fill(0);
-    for (const e of ZEV) { if (e.t <= t) { lastPluck[e.k] = e.t; lastVel[e.k] = e.v; } else break; }
-    for (let k = 0; k < 21; k++) {
-      const v = this.vOf(k), dt = t - lastPluck[k], live = dt < 2 ? Math.exp(-dt * 2.6) : 0;
-      const amp = live * CH * .7 * lastVel[k], u0 = .09, u1 = .92, n = 18, I = (.26 + .74 * live) * appear;
+    for (const lu of [.2, .8]) {                       // two stubby little legs of the stand
+      const p = this.at(lu, 1.36), lw = Math.max(CW * 1.5, g.hw * .16), lh = g.hw * .55;
+      box(p[0] - lw - CW, p[1], p[0] + lw + CW, p[1] + lh + CH, (i, px, py) => {
+        const qx = Math.abs(px - p[0]) / lw, qy = (py - p[1]) / lh; if (qy > 1.15 || qx > 1.25 - .25 * qy) return;
+        const c = qx < 1 - .25 * qy && qy < 1 ? [.62, .26, .48, .58] : [1.1, .42, .72, .3], I = c[3] * A; R[i] = I * c[0]; G[i] = I * c[1]; B[i] = I * c[2]; GL[i] = -1;   // plum, with the soft outline
+      });
+    }
+    // the strings: soft pink-white threads; a plucked one glows and shivers
+    const lastPluck = new Array(ZN).fill(-9), lastVel = new Array(ZN).fill(0);
+    for (const e of ZEV) { if (e.t <= t) { const s = zStr(e.k); lastPluck[s] = e.t; lastVel[s] = e.v; } else break; }
+    for (let s = 0; s < ZN; s++) {
+      const v = this.vOf(s), dt = t - lastPluck[s], live = dt < 2 ? Math.exp(-dt * 2.6) : 0;
+      const amp = live * CH * .6 * lastVel[s], u0 = .095, u1 = .915, n = 16, I = (.82 + .18 * live) * A;
       let p0 = this.at(u0, v);
       for (let j = 1; j <= n; j++) {
         const u = u0 + (u1 - u0) * j / n, off = amp * Math.sin(Math.PI * j / n) * Math.sin(dt * 48 + j * .3), q = this.at(u, v);
         const p1 = [q[0] + g.n[0] * off, q[1] + g.n[1] * off];
-        lineSeg(p0[0], p0[1], p1[0], p1[1], 1, .96 + .04 * live, .8 + .14 * live, .66 + .28 * live, I);
+        lineSeg(p0[0], p0[1], p1[0], p1[1], 1, 1, .9 + .1 * live, .86 + .1 * live, I);   // pink threads, white-gold when plucked
         p0 = p1;
       }
-      const br = this.at(this.bridgeU(k), v), BI = (.8 + .2 * live) * appear;      // its bridge
-      put(br[0], br[1], BI, BI * .9, BI * .82, 94);
-      if (dt >= 0 && dt < .5) {                        // a little burst of light where it was plucked
-        const pp = this.at(this.bridgeU(k) + .13, v), rr = CW * (1 + dt * 8), A = 1 - dt / .5;
-        for (let m = 0; m < 6; m++) { const aa = m / 6 * 6.283 + k; put(pp[0] + Math.cos(aa) * rr, pp[1] + Math.sin(aa) * rr * .6, A, A * .7, A * .85, 42); }
+      const br = this.at(this.bridgeU(s), v), BI = (.85 + .15 * live) * A;
+      put(br[0], br[1], BI, BI * .88, BI * .92, 94);
+      if (dt >= 0 && dt < .5) {                          // a little burst of light where it was plucked
+        const pp = this.at(this.bridgeU(s) + .14, v), rr = CW * (1 + dt * 8), a3 = (1 - dt / .5) * A;
+        for (let m = 0; m < 6; m++) { const aa = m / 6 * 6.283 + s; put(pp[0] + Math.cos(aa) * rr, pp[1] + Math.sin(aa) * rr * .6, a3, a3 * .7, a3 * .85, 42); }
       }
     }
-    for (const e of ZEV) {                             // music notes floating up from each note of the tune
+    // her two little hooves on the strings, hopping to each note as she plays it
+    const pluckAt = e => this.at(this.bridgeU(zStr(e.k)) + .14, this.vOf(zStr(e.k)));
+    const hoof = (list, side) => {
+      let a = list[0], b = null; for (const e of list) { if (e.t <= t) a = e; else { b = e; break; } }
+      const pa = pluckAt(a), gap = b ? b.t - a.t : 9, f = b && gap < 1.6 ? clamp((t - a.t) / gap) : 0, pb = b ? pluckAt(b) : pa;
+      const x = pa[0] + (pb[0] - pa[0]) * easeInOut(f) + side * CW * 1.5, y = pa[1] + (pb[1] - pa[1]) * easeInOut(f) - Math.sin(Math.PI * f) * CH * 1.4 * Math.min(1, gap * 2);
+      const rx = Math.max(CW * 1.6, g.hw * .2), ry = Math.max(CH * .9, g.hw * .12);
+      box(x - rx - CW, y - ry - CH, x + rx + CW, y + ry + CH, (i, px, py) => {
+        const d = Math.hypot((px - x) / rx, (py - y) / ry); if (d > 1.25) return;
+        if (d > 1) { const I = .3 * A; R[i] = I * 1.1; G[i] = I * .42; B[i] = I * .72; GL[i] = -1; return; }   // the same soft outline
+        const I = (.95 - .2 * d) * A; R[i] = I; G[i] = I * .9; B[i] = I * .84; GL[i] = -1;
+      });
+    };
+    const hA = smooth(1.2, 1.8, t) * (1 - smooth(10.6, 11.4, t));
+    if (hA > 0) { const A0 = A; A *= hA; hoof(ZEV.filter(e => e.tune), 1); hoof(ZEV.filter(e => !e.tune && e.t < 10.5), -1); A = A0; }
+    // music notes float up from the tune; at the very end they drift together into the point of light the butterfly grows from
+    const cxL = W / 2, cyL = H * .46, gather = smooth(11.9, 13.2, t);
+    for (const e of ZEV) {
       if (!e.tune) continue;
-      const dt = t - e.t; if (dt < 0 || dt > 2.6) continue;
-      const p = this.at(this.bridgeU(e.k) + .13, this.vOf(e.k)), A = Math.sin(Math.PI * dt / 2.6);
-      const x = p[0] + Math.sin(dt * 2 + e.k) * CW * 2, y = p[1] - dt * H * .09 - CH * 2;
-      put(x, y, A, A * .55, A * .72, 111); put(x + CW * .8, y - CH, A, A * .55, A * .72, 124); put(x + CW * .8, y - CH * 2, A, A * .55, A * .72, 124);
-      if (e.k % 2) put(x + CW * 1.6, y - CH * 2, A, A * .55, A * .72, 92);
+      const dt = t - e.t; if (dt < 0) continue;
+      const life = dt < 2.6 ? Math.sin(Math.PI * Math.min(1, dt / 2.6)) : 0, a4 = Math.max(life, gather * .9) * (1 - smooth(13.2, 13.9, t)); if (a4 <= .03) continue;
+      const p = this.at(this.bridgeU(zStr(e.k)) + .14, this.vOf(zStr(e.k)));
+      let x = p[0] + Math.sin(dt * 2 + e.k) * CW * 2, y = p[1] - Math.min(dt, 2.6) * H * .09 - CH * 2;
+      x += (cxL - x) * gather; y += (cyL - y) * gather;
+      put(x, y, a4, a4 * .55, a4 * .72, gather > .8 ? 42 : 111);
+      if (gather < .6) { put(x + CW * .8, y - CH, a4, a4 * .55, a4 * .72, 124); put(x + CW * .8, y - CH * 2, a4, a4 * .55, a4 * .72, 124); }
     }
+    if (gather > 0) { const I = gather * (.6 + .4 * Math.sin(t * 9)); put(cxL, cyL, I, I * .85, I * .95, 42); }   // the point of light
   }
 });
 /* ---------- scene 7: Fade's HAUNT becomes a butterfly made of light, then the camera dives into its wing ---------- */
@@ -2362,7 +2422,7 @@ SCENES.push({
 });
 
 // the scenes that now linger a little longer end on a soft chord rather than silence
-[['happy birthday, baobei', 10.5], ['you, my little capricorn', 13.1], ['far from home, chasing your dreams', 12.6], ['welcome home, birthday girl', 13.2], ['you take care of everyone', 12.3]].forEach(([cap, at]) => {
+[['happy birthday, baobei', 10.5], ['you, my little capricorn', 12.8], ['far from home, chasing your dreams', 12.6], ['welcome home, birthday girl', 13.2], ['you take care of everyone', 12.3]].forEach(([cap, at]) => {
   const sc = SCENES.find(s => s.caps && s.caps.some(c => c.text === cap));
   if (sc) sc.cues.push([at, () => { roll([53, 57, 60, 65, 69, 72], 0, .11, .26); sparkle(.5, 1.2, 3, .11); }]);
 });
