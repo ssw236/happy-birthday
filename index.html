@@ -495,7 +495,7 @@ function zheng(m, at = 0, vel = .5, bend = 0) {
   s.buffer = p.b; s.playbackRate.setValueAtTime(r, t0);
   if (bend) { s.playbackRate.setValueAtTime(r, t0 + .28); s.playbackRate.linearRampToValueAtTime(r * Math.pow(2, bend / 12), t0 + .5); }   // the left hand pressing the string
   hp.type = 'highpass'; hp.frequency.value = 110; lp.type = 'lowpass'; lp.frequency.value = 5400;
-  g.gain.value = vel * .55;
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vel * .3, t0 + .004);   // as loud as the piano scenes around it, with a soft 4 ms onset (no click)
   s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(panTo(clamp((m - 65) / 40, -.45, .45))); s.start(t0); s.stop(t0 + 4);
 }
 // ---------- scenes + main loop ----------
@@ -1793,7 +1793,7 @@ const ZSTR = [41, 43, 45, 48, 50, 53, 55, 57, 60, 62, 65, 67, 69, 72, 74, 77, 79
 // the melody is her theme; the notes a guzheng doesn't have are made by pressing a string to bend it up, as players do
 const ZEV = (() => {
   const ev = [], sweep = (t0, from, to, step, v) => { const dir = to > from ? 1 : -1; for (let k = from, j = 0; dir > 0 ? k <= to : k >= to; k += dir, j++) ev.push({ t: t0 + j * step, k, v }); };
-  sweep(.7, 6, 20, .045, .3);                                                  // a sweep up the strings to begin
+  sweep(.2, 6, 20, .045, .3);                                                  // a sweep up the strings to begin
   const beat = .5, mel = [[0, 12], [.5, 13], [1, 15], [2, 14, 2], [3, 13],    // A C F (D bent up to E) C
     [4, 14], [5, 13], [6, 12],                                                 // D C A
     [8, 12, 1], [9, 14], [9.5, 15], [10, 14, 2], [11, 14],                     // (A bent to B flat) D F (D bent to E) D
