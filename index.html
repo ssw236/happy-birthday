@@ -737,7 +737,7 @@ SCENES.push({
     const p = bootP(t), cx = W / 2, cy = H / 2 - .06 * S;
     const waiting = this.bloomAt === undefined, b0 = waiting ? Infinity : Math.max(this.bloomAt, 2.4), u = t - b0, bloom = 1 - Math.exp(-Math.pow(Math.max(0, u) / 2.26, 1.6));   // half open by 1.8 s, then the front petals unfurl slowly over the next ~3 s
     openBtn.hidden = !(waiting && t > 8.2 && !opened);  // once the bar is full, "tap to play" appears in its place
-    if (!waiting && u > 7.4 && !opened) openGift();      // once it has bloomed and sung a little, the gift opens by itself
+    if (!waiting && u > 13.6 && !opened) openGift();     // it blooms, then spins a while; after one full phrase of its tune the gift opens by itself
     loadEl.hidden = opened || t > 8.2;                // a thin bar fills under the flower
     tapEl.hidden = true;
     loadBar.style.width = (p * 100).toFixed(1) + '%';
