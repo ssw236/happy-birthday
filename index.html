@@ -32,7 +32,7 @@ body{color:var(--ink);font-family:var(--mono);-webkit-tap-highlight-color:transp
 #load{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);text-align:center;pointer-events:none;font:500 clamp(20px,1vw + 15px,28px) var(--hand);color:var(--ink);text-shadow:0 0 14px rgba(255,140,185,.55);white-space:nowrap}
 .zh{display:block;font-family:var(--zh);font-weight:400;font-size:.6em;letter-spacing:.14em;color:#f6cfe0;margin-top:.2em}
 #term .zh{font-size:.62em}
-#tap{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52 + 4.4em);transform:translateX(-50%);font:500 clamp(18px,1vw + 13px,24px) var(--hand);color:var(--ink);text-align:center;white-space:nowrap;pointer-events:none;text-shadow:0 0 14px rgba(255,140,185,.6);animation:softpulse 2.6s ease-in-out infinite}
+#tap{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);font:500 clamp(18px,1vw + 13px,24px) var(--hand);color:var(--ink);text-align:center;white-space:nowrap;pointer-events:none;text-shadow:0 0 14px rgba(255,140,185,.6);animation:softpulse 2.6s ease-in-out infinite}
 @keyframes softpulse{50%{opacity:.5}}
 #load .track{margin:.55em auto 0;width:min(52vw,240px);height:2px;border-radius:2px;background:rgba(255,186,212,.16);overflow:hidden}
 #load .track i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,#ff8fb8,#ffe3ee);box-shadow:0 0 10px #ff9cbf}
@@ -474,6 +474,24 @@ const SH_MEL = [[[77, 0], [79, .5], [81, 1], [84, 2], [81, 2.5], [79, 3]], [[77,
   [[74, 0], [77, .5], [79, 1], [81, 2], [84, 2.5], [86, 3]], [[84, 0], [81, .5], [79, 1], [77, 2], [79, 3]]];
 function sparkle(at = 0, dur = 1.2, n = 5, vel = .2) { for (let k = 0; k < n; k++) piano(TWINK[(Math.random() * TWINK.length) | 0], at + Math.random() * dur, vel * (.6 + .6 * Math.random()), 2.4); }
 const roll = (ns, at = 0, step = .07, vel = .4) => ns.forEach((m, k) => piano(m, at + k * step, vel, 3.2));
+const ZBUF = new Map();
+function zhengBuf(f) {
+  const sr = AC.sampleRate, N = Math.max(2, Math.floor(sr / f - .5)), key = sr + ':' + N;
+  if (ZBUF.has(key)) return ZBUF.get(key);
+  const T = clamp(3.8 - f / 450, 1, 3.4), len = Math.floor(sr * (T + .3)), b = AC.createBuffer(1, len, sr), d = b.getChannelData(0), rho = Math.pow(.001, 1 / (T * sr));
+  let lp = 0; for (let i = 0; i <= N && i < len; i++) { lp += ((Math.random() * 2 - 1) - lp) * .78; d[i] = lp * (1 - i / (N + 1) * .5); }
+  for (let i = N + 1; i < len; i++) d[i] = rho * .5 * (d[i - N] + d[i - N - 1]);
+  const r = { b, f: sr / (N + .5) }; ZBUF.set(key, r); return r;
+}
+function zheng(m, at = 0, vel = .5, bend = 0) {
+  if (!live()) return;
+  const f = NT(m), t0 = T0(at), p = zhengBuf(f), s = AC.createBufferSource(), g = AC.createGain(), hp = AC.createBiquadFilter(), lp = AC.createBiquadFilter(), r = f / p.f;
+  s.buffer = p.b; s.playbackRate.setValueAtTime(r, t0);
+  if (bend) { s.playbackRate.setValueAtTime(r, t0 + .28); s.playbackRate.linearRampToValueAtTime(r * Math.pow(2, bend / 12), t0 + .5); }   // the left hand pressing the string
+  hp.type = 'highpass'; hp.frequency.value = 110; lp.type = 'lowpass'; lp.frequency.value = 5400;
+  g.gain.value = vel * .55;
+  s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(panTo(clamp((m - 65) / 40, -.45, .45))); s.start(t0); s.stop(t0 + 4);
+}
 // ---------- scenes + main loop ----------
 const SCENES = [];
 let si = 0, st = 0, lastT = 0, fired = new Set(), opened = false, audioOn = false;
@@ -526,6 +544,7 @@ function onAudioReady() {
   const sc = SCENES[si]; if (sc.onAudio) sc.onAudio();
 }
 function unlockAudio() {
+  if (SCENES[si] && SCENES[si].boot && st < 8.2 && !opened) return;   // taps while the loading bar fills don't start anything yet
   audioInit(); if (!AC) { bootBloom(); return; }        // no sound at all on this device: bloom anyway
   if (AC.state === 'running') onAudioReady(); else AC.resume().then(onAudioReady).catch(() => bootBloom());
 }
@@ -703,7 +722,7 @@ SCENES.push({
     const waiting = this.bloomAt === undefined, b0 = waiting ? Infinity : Math.max(this.bloomAt, 2.4), u = t - b0, bloom = easeInOut(u / 3.2);
     openBtn.hidden = !(t > 8.2 && u > 3.4 && !opened);          // the gift is ready once the bar is full and the flower has bloomed
     loadEl.hidden = opened || t > 8.2;                // a thin bar fills under the flower
-    tapEl.hidden = !(waiting && t > 3.2 && !opened);  // until the music starts, a soft prompt to tap
+    tapEl.hidden = !(waiting && t > 8.2 && !opened);  // once the bar is full, a soft prompt to tap appears in its place
     loadBar.style.width = (p * 100).toFixed(1) + '%';
     this.dust(t);
     const bud = easeOut((t - .9) / 2.6), size = .12 + .4 * bud + .48 * easeOut(u / 3.2) + (waiting ? .025 * Math.sin(t * 2.2) * bud : 0);   // a bud that breathes while it waits
@@ -720,7 +739,7 @@ const SPARK = Array.from('*+.:', c => c.charCodeAt(0));
 const NAMEFONT = s => `${s}px Pacifico, "Brush Script MT", ${SERIF}`;
 function heartIn(qx, qy) { const a = qx * qx + qy * qy - 1; return a * a * a - qx * qx * qy * qy * qy < 0; }
 SCENES.push({
-  dur: 10.5, glow: .7, bg0: [.02, .008, .022], bg1: [.045, .012, .036],
+  dur: 12, glow: .7, bg0: [.02, .008, .022], bg1: [.045, .012, .036],
   caps: [{ at: 4.6, text: "happy birthday, baobei", zh: "生日快乐，宝贝" }],
   cues: [[.15, () => playBars(THEME_B, 0, .64, .5)], [.6, () => sparkle(0, 2.2, 5, .15)]],
   init() {
@@ -1103,7 +1122,7 @@ const GOAT_BOX = [-.82, 1.1, -.84, .78], CRAB_BOX = [-1.06, 1.06, -.74, .76];
 const heartPt = (a, s) => [16 * Math.pow(Math.sin(a), 3) / 17 * s, -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) / 17 * s];
 
 SCENES.push({
-  dur: 13, glow: .8, bg0: [.008, .008, .035], bg1: [.03, .012, .05],
+  dur: 16, glow: .8, bg0: [.008, .008, .035], bg1: [.03, .012, .05],
   caps: [{ at: 6, text: "you, my little capricorn", zh: "你，我的小摩羯" }, { at: 9.4, text: "and me, right beside you", zh: "而我，一直在你身边" }],
   cues: [[.15, () => playBars([['Dm'], ['Bb'], THEME_B[0], THEME_B[1]], 0, .8, .44)], [9.6, () => sparkle(0, 1, 4, .15)]]
     .concat(CAP.filter((s, k) => k % 2 === 0).map((s, k) => [1.2 + k * .4, () => piano([77, 81, 84, 86, 89, 91][k % 6], 0, .17, 2.4)]))
@@ -1134,7 +1153,7 @@ SCENES.push({
     this.hc = P ? [W * .5, H * .5] : [W * .52, H * .42]; this.hs = P ? Math.min(W, H) * .14 : Math.min(W * .07, H * .125);
   },
   draw(t) {
-    const fa = smooth(6.0, 7.3, t), fc = smooth(6.5, 7.8, t), mwk = 1 - .8 * fa, G1 = this.G1;
+    const la = 1 - smooth(5.5, 6.1, t), lc = 1 - smooth(5.7, 6.3, t), fa = smooth(6.25, 7.5, t), fc = smooth(6.65, 7.9, t), mwk = 1 - .8 * fa, G1 = this.G1;
     for (let i = 0; i < N; i++) { const m = this.mw[i] * mwk; if (m > .02) { const I = m * (.85 + .15 * Math.sin(t * .8 + i)); R[i] = I * .75; G[i] = I * .65; B[i] = I; GL[i] = -1; } }
     for (const s of this.stars) {
       const I = (.15 + .55 * s.m) * (.55 + .45 * (.5 + .5 * Math.sin(t * s.sp + s.ph)));
@@ -1153,13 +1172,13 @@ SCENES.push({
     for (let k = 0; k < P.length; k++) {
       const a = P[k], b = P[(k + 1) % P.length], f = clamp((t - 3.3 - k * seg) / seg);
       if (f <= 0) continue;
-      if (fa < 1) lineSeg(a.x, a.y, b.x, b.y, f, .95, .55, .78, .72 * (1 - fa), 2);
+      if (la > 0) lineSeg(a.x, a.y, b.x, b.y, f, .95, .55, .78, .72 * la, 2);
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .95, 42);
     }
     CNC_LINES.forEach(([j, k], n) => {                 // his constellation lines
       const a = this.cpts[j], b = this.cpts[k], f = clamp((t - 4.1 - n * .25) / .25);
       if (f <= 0) return;
-      if (fc < 1) lineSeg(a.x, a.y, b.x, b.y, f, 1, .7, .6, .72 * (1 - fc), 2);
+      if (lc > 0) lineSeg(a.x, a.y, b.x, b.y, f, 1, .7, .6, .72 * lc, 2);
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .85, 42);
     });
     const star = (p, ta, k, dim) => {             // once the friends appear, their stars step back so the faces stay clear
@@ -1173,10 +1192,10 @@ SCENES.push({
         put(p.x, p.y - CH, A, A * .8, A * .9, 124); put(p.x, p.y + CH, A, A * .8, A * .9, 124);
       }
     };
-    this.pts.forEach((p, k) => star(p, 1.2 + k * .2, k, 1 - fa));
-    this.cpts.forEach((p, k) => star(p, 3.0 + k * .22, k + 20, 1 - fc));
-    if (t > 4.1 && fc < 1) for (let k = 0; k < 7; k++) {   // the Beehive cluster glittering between the Aselli
-      const I = (.3 + .3 * Math.sin(t * 3 + k * 1.7)) * smooth(4.1, 4.8, t) * (1 - fc);
+    this.pts.forEach((p, k) => star(p, 1.2 + k * .2, k, la));
+    this.cpts.forEach((p, k) => star(p, 3.0 + k * .22, k + 20, lc));
+    if (t > 4.1 && lc > 0) for (let k = 0; k < 7; k++) {   // the Beehive cluster glittering between the Aselli
+      const I = (.3 + .3 * Math.sin(t * 3 + k * 1.7)) * smooth(4.1, 4.8, t) * lc;
       put(this.bee[0] + (hash(k + 1) - .5) * CW * 5, this.bee[1] + (hash(k + 9) - .5) * CH * 2.5, I, I * .9, I * .8, 46);
     }
     const [hx, hy] = this.hc, hs = this.hs * (1 + .05 * Math.sin(t * 3) * smooth(9.2, 9.8, t)), NH = 16;   // a heart of stars between them
@@ -1281,7 +1300,7 @@ function blob(L, xc, yc, rx, ry, kind, r, g, b) {
 
 /* ---------- scene 4: Toronto, where she studies: the skyline from the islands on a snowy night ---------- */
 SCENES.push({
-  dur: 12.5, glow: .8, bg0: [.01, .016, .055], bg1: [.06, .05, .1],
+  dur: 14.5, glow: .8, bg0: [.01, .016, .055], bg1: [.06, .05, .1],
   caps: [{ at: 1, text: "far from home, chasing your dreams", zh: "离家很远，追逐着你的梦想" }, { at: 8.6, text: "but this time, you’re going home", zh: "但这一次，你要回家了" }],
   cues: [[.1, () => playBars([['Am', [[76, 0, 1], [72, 1, 1], [69, 2, 2]]], ['F', [[72, 0, 1], [69, 1, 1], [65, 2, 2]]], ['C', [[67, 0, 1], [72, 1, 1], [76, 2, 2]]], ['Dm', [[74, 0, 2], [72, 2, 2]]]], 0, .78, .44)]]
     .concat(Array.from({ length: 5 }, (_, k) => [4.6 + k * 1.4, () => piano(TWINK[(k * 2 + 1) % TWINK.length], 0, .13, 2.4)])),
@@ -1555,7 +1574,7 @@ const FW = Array.from({ length: 10 }, (_, k) => ({
   c: [[1, .55, .75], [1, .82, .45], [.8, .65, 1], [.6, 1, .85], [1, .75, .9]][k % 5], heart: k === 4 || k === 9, willow: k === 2 || k === 6
 }));
 SCENES.push({
-  dur: 13, glow: .85, bg0: [.012, .01, .045], bg1: [.1, .035, .1],
+  dur: 15, glow: .85, bg0: [.012, .01, .045], bg1: [.1, .035, .1],
   caps: [{ at: 1.2, text: "welcome home, birthday girl", zh: "欢迎回家，小寿星" }, { at: 8.4, text: "the whole city lights up for you", zh: "整座城市都为你亮起" }],
   cues: [[.15, () => playBars(SH_MEL.map((m, k) => [['F', 'Dm', 'Bb', 'C'][k], m.map(([n, b]) => [n, b, .5])]), 0, .8, .44)]]
     .concat(FW.map(f => [f.t, () => piano(TWINK[Math.floor(hash(f.t * 7) * TWINK.length)], 0, .15, 2.6)])),
@@ -1695,6 +1714,97 @@ SCENES.push({
   }
 });
 
+/* ---------- scene: her guzheng, the strings she practises on, plucked in light ---------- */
+// 21 strings tuned to F major pentatonic, low to high, so the whole scene stays in the gift's key
+const ZSTR = [41, 43, 45, 48, 50, 53, 55, 57, 60, 62, 65, 67, 69, 72, 74, 77, 79, 81, 84, 86, 89];
+// every pluck in the scene: { t: seconds, k: string, v: loudness, b: press-bend in semitones }
+const ZEV = (() => {
+  const ev = [], sweep = (t0, from, to, step, v) => { const dir = to > from ? 1 : -1; for (let k = from, j = 0; dir > 0 ? k <= to : k >= to; k += dir, j++) ev.push({ t: t0 + j * step, k, v }); };
+  sweep(.6, 6, 20, .045, .32);                                                 // a sweep up the strings to begin
+  const beat = .5, mel = [[0, 15], [.75, 13], [1, 14], [1.5, 15], [2, 16, 1], [3, 15], [3.5, 13], [4, 12], [4.5, 13], [5, 11], [5.5, 10], [6, 12, 2],
+    [8, 15], [8.5, 16], [9, 18], [10, 17], [10.5, 16], [11, 15], [11.5, 13], [12, 14], [13, 15, 1]];
+  for (const [b, k, bend] of mel) ev.push({ t: 2 + b * beat, k, v: .55, b: bend || 0, tune: true });
+  for (const [b, k] of [[0, 5], [4, 3], [8, 4], [12, 5]]) ev.push({ t: 2 + b * beat, k, v: .36 });   // low strings under the tune
+  sweep(9.3, 20, 4, .05, .26);                                                 // and back down
+  for (const [dt, k] of [[0, 5], [.02, 10], [.04, 15]]) ev.push({ t: 10.4 + dt, k, v: .42 });
+  return ev.sort((a, b) => a.t - b.t);
+})();
+
+SCENES.push({
+  dur: 14, glow: .8, bg0: [.03, .012, .02], bg1: [.07, .03, .035],
+  caps: [{ at: 2.2, text: "your fingers, dancing on the strings", zh: "你的指尖，在琴弦上起舞" }, { at: 8.4, text: "keep practicing, i’ll always be listening", zh: "继续练习吧，我会一直听着" }],
+  cues: [[.1, () => {
+    for (const e of ZEV) zheng(ZSTR[e.k], e.t - .1, e.v, e.b || 0);
+    for (const [t, c] of [[2, 'F'], [4, 'Dm'], [6, 'Bb'], [8, 'C'], [10.4, 'F']]) LH[c].slice(0, 4).forEach((m, j) => piano(m, t - .1 + j * .03, .2, 3.2));   // soft piano underneath
+  }]],
+  init() {
+    const P = W < H, a = P ? -1.02 : -.17, r = rng(88);
+    const Lg = P ? Math.min(H * .78, W * 2.2) : Math.min(W * .86, H * 2.6);
+    this.g = { cx: W / 2, cy: H * (P ? .48 : .5), d: [Math.cos(a), Math.sin(a)], n: [-Math.sin(a), Math.cos(a)], Lg, hw: Lg * (P ? .12 : .14) };
+    this.dust = Array.from({ length: 50 }, () => ({ x: r() * W, y: r() * H, ph: r() * 6.28, sp: .3 + r() * 1.2 }));
+    this.petals = Array.from({ length: 26 }, () => ({ x: r() * W, ph: r() * H, sp: 10 + r() * 18, sw: r() * 6.28, g: ".,'`".charCodeAt((r() * 4) | 0) }));
+  },
+  hwAt(u) { return this.g.hw * (.84 + .16 * u); },                           // a touch wider toward the tail
+  at(u, v) { const g = this.g, w = this.hwAt(u) * v, l = (u - .5) * g.Lg; return [g.cx + g.d[0] * l + g.n[0] * w, g.cy + g.d[1] * l + g.n[1] * w]; },
+  vOf(k) { return -.78 + 1.56 * k / 20; },
+  bridgeU(k) { return .7 - .42 * Math.pow(k / 20, 1.15); },                   // the movable bridges: a long diagonal line, like geese in flight
+  draw(t) {
+    const g = this.g, appear = easeOut(t / 1.2);
+    for (const d of this.dust) { const I = Math.pow(Math.max(0, Math.sin(t * d.sp + d.ph)), 8) * .4; if (I > .05) put(d.x, d.y, I, I * .8, I * .7, 46); }
+    for (const p of this.petals) {                     // a few petals drifting by
+      const y = (p.ph + t * p.sp) % (H * 1.1) - H * .05, x = p.x + Math.sin(t * .7 + p.sw) * CW * 3;
+      put(x, y, .5, .26, .36, p.g);
+    }
+    // the instrument: rosewood frame, carved head and tail, a light paulownia soundboard with its grain
+    const ext = g.Lg * .55 + g.hw * 1.3;
+    box(g.cx - ext, g.cy - ext, g.cx + ext, g.cy + ext, (i, px, py) => {
+      const rx = px - g.cx, ry = py - g.cy, u = (rx * g.d[0] + ry * g.d[1]) / g.Lg + .5; if (u < -.005 || u > 1.005) return;
+      const v = (rx * g.n[0] + ry * g.n[1]) / this.hwAt(clamp(u)), av = Math.abs(v);
+      if (av > 1.25) return;
+      if (av > 1) { if (v > 0) { const I = .1 * (1.25 - av) / .25 * appear; R[i] = I * .9; G[i] = I * .4; B[i] = I * .55; GL[i] = -1; } return; }   // a soft glow beneath
+      const end = Math.min(u, 1 - u) * g.Lg / g.hw; if (end < .25 && av > .55 + end * 1.6) return;   // rounded ends
+      let r, gg, b, L, ch = -1;
+      if (av > .88) { r = .5; gg = .2; b = .17; L = v < 0 ? .9 : .6; }        // the rosewood frame
+      else if (u < .075 || u > .935) {                 // carved head and tail, with a little gold
+        r = .46; gg = .18; b = .16; L = .7 + .15 * Math.sin(v * 9);
+        if (Math.sin(u * 260) * Math.sin(v * 7) > .72) { r = 1; gg = .8; b = .42; L = .85; ch = 42; }
+      } else if ((u > .075 && u < .09) || (u > .92 && u < .935)) { r = 1; gg = .93; b = .82; L = .82; ch = 124; }   // the fixed bridges at each end
+      else {                                           // the soundboard
+        const grain = .5 + .5 * Math.sin(u * g.Lg * .07 + noise(u * 6, v * 2) * 4);
+        r = .92; gg = .64; b = .43; L = (.36 + .14 * grain) * (1 - .25 * av) * (.85 + .15 * Math.sin(u * 3.1416));
+      }
+      L *= appear; R[i] = r * L; G[i] = gg * L; B[i] = b * L; GL[i] = ch;
+    });
+    // the strings: silver lines from end to end; a plucked string glows and shivers
+    const lastPluck = new Array(21).fill(-9), lastVel = new Array(21).fill(0);
+    for (const e of ZEV) { if (e.t <= t) { lastPluck[e.k] = e.t; lastVel[e.k] = e.v; } else break; }
+    for (let k = 0; k < 21; k++) {
+      const v = this.vOf(k), dt = t - lastPluck[k], live = dt < 2 ? Math.exp(-dt * 2.6) : 0;
+      const amp = live * CH * .7 * lastVel[k], u0 = .09, u1 = .92, n = 18, I = (.26 + .74 * live) * appear;
+      let p0 = this.at(u0, v);
+      for (let j = 1; j <= n; j++) {
+        const u = u0 + (u1 - u0) * j / n, off = amp * Math.sin(Math.PI * j / n) * Math.sin(dt * 48 + j * .3), q = this.at(u, v);
+        const p1 = [q[0] + g.n[0] * off, q[1] + g.n[1] * off];
+        lineSeg(p0[0], p0[1], p1[0], p1[1], 1, .96 + .04 * live, .8 + .14 * live, .66 + .28 * live, I);
+        p0 = p1;
+      }
+      const br = this.at(this.bridgeU(k), v), BI = (.8 + .2 * live) * appear;      // its bridge
+      put(br[0], br[1], BI, BI * .9, BI * .82, 94);
+      if (dt >= 0 && dt < .5) {                        // a little burst of light where it was plucked
+        const pp = this.at(this.bridgeU(k) + .13, v), rr = CW * (1 + dt * 8), A = 1 - dt / .5;
+        for (let m = 0; m < 6; m++) { const aa = m / 6 * 6.283 + k; put(pp[0] + Math.cos(aa) * rr, pp[1] + Math.sin(aa) * rr * .6, A, A * .7, A * .85, 42); }
+      }
+    }
+    for (const e of ZEV) {                             // music notes floating up from each note of the tune
+      if (!e.tune) continue;
+      const dt = t - e.t; if (dt < 0 || dt > 2.6) continue;
+      const p = this.at(this.bridgeU(e.k) + .13, this.vOf(e.k)), A = Math.sin(Math.PI * dt / 2.6);
+      const x = p[0] + Math.sin(dt * 2 + e.k) * CW * 2, y = p[1] - dt * H * .09 - CH * 2;
+      put(x, y, A, A * .55, A * .72, 111); put(x + CW * .8, y - CH, A, A * .55, A * .72, 124); put(x + CW * .8, y - CH * 2, A, A * .55, A * .72, 124);
+      if (e.k % 2) put(x + CW * 1.6, y - CH * 2, A, A * .55, A * .72, 92);
+    }
+  }
+});
 /* ---------- scene 7: Fade's HAUNT becomes a butterfly made of light, then the camera dives into its wing ---------- */
 // the wing is painted once on a canvas in wing coordinates (x: out from the body, v: toward the head), like a real one:
 // violet-to-pink gradient with an iridescent sheen, dark veins, a dark border band and white spots along the edge
@@ -1910,7 +2020,7 @@ SCENES.push({
 
 /* ---------- scene 7: Sage (a slow orb spreads its ice, then a wall of huge ice blocks rises) ---------- */
 SCENES.push({
-  dur: 12.5, fadeIn: .01, glow: .85, bg0: [.004, .012, .014], bg1: [.01, .05, .044],
+  dur: 14, fadeIn: .01, glow: .85, bg0: [.004, .012, .014], bg1: [.01, .05, .044],
   caps: [{ at: 4.9, text: "you take care of everyone", zh: "你照顾着身边的每一个人" }, { at: 8.6, text: "let me take care of you", zh: "让我来照顾你" }],
   cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [1.0, () => roll([70, 74, 77, 82, 86], 0, .06, .2)], [2.5, () => roll([96, 93, 89, 86, 84, 81], 0, .05, .2)], [3.5, () => roll([46, 53, 58, 62, 65], 0, .08, .3)]]
     .concat([5.2, 6.8, 8.4, 10].map((x, k) => [x, () => piano(k % 2 ? 89 : 86, 0, .13, 2.4)])),
@@ -1966,7 +2076,7 @@ SCENES.push({
   },
   draw(t) {
     const wl = this.wall, base = wl.base, ic = this.ice, baseRow = Math.round(cy_(base));
-    const spread = easeOut((t - ic.t0) / 1.1), life = 1 - smooth(11.4, 12.4, t);
+    const spread = easeOut((t - ic.t0) / 1.1), life = 1 - smooth(12.9, 13.9, t);
     for (const f of this.snow) {                       // slow snowflakes; inside the field they drift almost to a stop
       let y = (f.y0 + t * f.sp) % (H * 1.05);
       if (spread > 0 && y > base) y = base + (y - base) * (1 - .75 * spread);
@@ -2241,6 +2351,12 @@ SCENES.push({
       }
     }
   }
+});
+
+// the scenes that now linger a little longer end on a soft chord rather than silence
+[['happy birthday, baobei', 10.5], ['you, my little capricorn', 13.1], ['far from home, chasing your dreams', 12.6], ['welcome home, birthday girl', 13.2], ['you take care of everyone', 12.3]].forEach(([cap, at]) => {
+  const sc = SCENES.find(s => s.caps && s.caps.some(c => c.text === cap));
+  if (sc) sc.cues.push([at, () => { roll([53, 57, 60, 65, 69, 72], 0, .11, .26); sparkle(.5, 1.2, 3, .11); }]);
 });
 
 start();
