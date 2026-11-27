@@ -2172,16 +2172,16 @@ SCENES.push({
   init() {
     const r = rng(77), P = W < H;
     // three ice blocks, centred, standing on a dark glassy floor that mirrors them
-    const nB = 3, Wt = Math.min(W * (P ? .9 : .64), H * 1.25), bw = Wt / nB, bh = bw * (P ? 1.4 : 1.05), x0 = (W - Wt) / 2;
+    const nB = 4, Wt = Math.min(W * (P ? .94 : .7), H * 1.36), bw = Wt / nB, bh = (Wt / 3) * (P ? 1.25 : .98), x0 = (W - Wt) / 2;   // four blocks, as tall as before
     this.wall = { nB, bw, bh, x0, base: H * (P ? .58 : .63), top: bw * .08 };
     this.blocks = Array.from({ length: nB }, (_, k) => ({ x: x0 + k * bw, d: Math.abs(k - (nB - 1) / 2) * .14, s: r() * 9 }));
     this.orb = { x: W / 2, y: H * (P ? .24 : .22), r: Math.min(W, H) * (P ? .15 : .11) };
     this.orbit = Array.from({ length: 56 }, (_, k) => ({ a: (k >> 1) / 28 * 6.283, ring: k % 2 }));
     // the slow orb lands in front of the wall; its frost spreads as a six-armed snowflake etched into the ice
     const fl = this.wall.base;
-    this.ice = { x: W / 2, y: fl + (H - fl) * .45, rx: W * (P ? .5 : .42), ry: (H - fl) * .42, t0: 2.5 };
+    this.ice = { x: W / 2, y: fl + (H - fl) * .45, rx: W * (P ? .44 : .42), ry: (H - fl) * .42, t0: 2.5 };
     this.snow = Array.from({ length: 46 }, () => ({ x: r() * W, y0: r() * H, sp: H * (.03 + r() * .04), sw: r() * 6.28, m: r() }));
-    const inField = () => { for (;;) { const u = r() * 2 - 1, v = r() * 2 - 1; if (u * u + v * v < .72) return [u, v]; } };
+    const inField = () => { for (;;) { const u = r() * 2 - 1, v = r() * 2 - 1; if (u * u + v * v < .45) return [u, v]; } };
     this.shards = Array.from({ length: P ? 14 : 20 }, () => { const [u, v] = inField(); return { u, v, s: r(), h: r(), ph: r() * 6.28 }; });   // crystals hovering over the ice
     this.sparks = Array.from({ length: 36 }, () => { const [u, v] = inField(); return { u, v, sp: .25 + r() * .35, off: r(), ph: r() * 6.28 }; });
   },
@@ -2273,9 +2273,9 @@ SCENES.push({
     // differently, pale cracks between them, a brighter rim; it spreads from where the orb landed, lingers, then melts away
     if (spread > 0 && life > 0) {
       const NU = 6.5, NV = 3.4;
-      box(ic.x - ic.rx, ic.y - ic.ry, ic.x + ic.rx, ic.y + ic.ry, (i, px, py) => {
+      box(ic.x - ic.rx * 1.15, ic.y - ic.ry * 1.15, ic.x + ic.rx * 1.15, ic.y + ic.ry * 1.15, (i, px, py) => {
         if (py < base + CH * .5) return;
-        const u = (px - ic.x) / ic.rx, v = (py - ic.y) / ic.ry, r = Math.sqrt(u * u + v * v); if (r > spread || r > 1) return;
+        const u = (px - ic.x) / ic.rx, v = (py - ic.y) / ic.ry; if (u * u + v * v > 1.45) return;
         const X = u * NU, Y = v * NV, gx = Math.floor(X), gy = Math.floor(Y);
         let d1 = 99, d2 = 99, p1x = 0, p1y = 0, p2x = 0, p2y = 0, id = 0;
         for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {   // the nearest two crack centres (a Voronoi pattern)
@@ -2283,9 +2283,15 @@ SCENES.push({
           const qx = cgx + .15 + .7 * h1, qy = cgy + .15 + .7 * h2, d = (X - qx) * (X - qx) + (Y - qy) * (Y - qy);
           if (d < d1) { d2 = d1; p2x = p1x; p2y = p1y; d1 = d; p1x = qx; p1y = qy; id = h1 * 7 + h2; } else if (d < d2) { d2 = d; p2x = qx; p2y = qy; }
         }
+        // whole pieces of ice: a piece belongs to the field if its centre lies inside an uneven, wobbly outline, so the edge
+        // follows the cracks and is never a neat oval; pieces join in as the frost spreads out from the middle
+        const pu = p1x / NU, pv = p1y / NV, pr = Math.hypot(pu, pv), pa = Math.atan2(pv, pu);
+        const edgeR = .7 + .3 * noise(Math.cos(pa) * 1.4 + 4, Math.sin(pa) * 1.4 + 8) + .1 * (noise(Math.cos(pa) * 3 + 11, Math.sin(pa) * 3 + 2) - .5);
+        if (pr > edgeR || pr > spread * 1.05) return;
+        const r = pr / edgeR;
         const nx = p2x - p1x, ny = p2y - p1y, nl = Math.hypot(nx, ny) || 1, ed = Math.abs((X - (p1x + p2x) / 2) * nx / nl + (Y - (p1y + p2y) / 2) * ny / nl);
         const facet = ((X - p1x) * -.55 + (Y - p1y) * -.85), wave = .5 + .5 * Math.sin(t * 1.3 + X * 1.1 + Y * 1.9);
-        const rim = smooth(.86, .99, r), front = spread < 1 ? Math.exp(-Math.pow((spread - r) / .05, 2)) : 0;
+        const rim = smooth(.8, 1, r), front = spread < 1 ? Math.exp(-Math.pow((spread * 1.05 - pr) / .09, 2)) : 0;
         let I = .5 + .18 * hash(id * 3.1) + .2 * facet + .1 * wave + .3 * rim + .5 * front, cr = .16, cg = .92, cb = .78, ch;
         if (ed < .075 + .02 * (1 - (v + 1) / 2)) {     // a crack: pale, bright, drawn along its own direction
           I = 1; cr = .7; cg = 1; cb = .94; ch = slopeGlyph(-ny * ic.rx / NU, nx * ic.ry / NV);
@@ -2295,7 +2301,7 @@ SCENES.push({
           if (I > .82) { cr += .2 * (I - .82); }       // the brightest facets whiten a touch
         }
         if (hash(i + Math.floor(t * 5) * 7.1) < .004) { I = 1.2; ch = 42; cr = .9; cg = 1; cb = 1; }   // a glint
-        const al = (1 - smooth(.97, 1, r)) * life, J = Math.min(1.1, I);
+        const al = life, J = Math.min(1.1, I);
         R[i] += (cr * J - R[i]) * al; G[i] += (cg * J - G[i]) * al; B[i] += (cb * J - B[i]) * al; if (al > .4) GL[i] = ch;
       });
       for (const sp of this.sparks) {                  // sparkles drifting up off the ice
