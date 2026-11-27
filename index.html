@@ -638,10 +638,10 @@ function bootAmb(k, at) {
 // the loading flower, after the reference clip: a point of light, a glittering bud, then five broad pink petals over five
 // more, opening around a dark star-shaped heart with a gold centre; when the gift is opened the wind carries it away
 const FLOWER = [{ n: 5, len: 1, wd: .53, open: .98, curl: .45, rot: 0 }, { n: 5, len: .74, wd: .5, open: .56, curl: .55, rot: .628 }];
-let FLZ = null, FLID = null;
+let FLZ = null, FLID = null, FLPV = null;
 function drawFlower(o, t) {
-  if (!FLZ || FLZ.length !== N) { FLZ = new Float32Array(N); FLID = new Int16Array(N); }
-  FLZ.fill(-1e9); FLID.fill(0);
+  if (!FLZ || FLZ.length !== N) { FLZ = new Float32Array(N); FLID = new Int16Array(N); FLPV = new Int16Array(N); }
+  FLPV.set(FLID); FLZ.fill(-1e9); FLID.fill(0);   // remember which petal held each cell last frame
   let curId = 0;
   const cyw = Math.cos(o.yaw), syw = Math.sin(o.yaw), cp = Math.cos(o.pitch), sp = Math.sin(o.pitch);
   const rot = (x, y, z) => { const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw; return [x1, y * cp - z1 * sp, y * sp + z1 * cp]; };
@@ -663,7 +663,10 @@ function drawFlower(o, t) {
       }
     }
     const ix = Math.round(cx_(o.x + X * o.R)), iy = Math.round(cy_(o.y - Y * o.R)); if (ix < 0 || iy < 0 || ix >= COLS || iy >= ROWS) return;
-    const i = iy * COLS + ix; if (P[2] <= FLZ[i]) return; FLZ[i] = P[2]; FLID[i] = curId;
+    const i = iy * COLS + ix;
+    // where two petals lie at almost the same depth, the one that held the cell last frame keeps it, so they don't flicker back and forth
+    const hold = FLID[i] && FLID[i] !== curId ? (FLPV[i] === FLID[i] ? .02 : FLPV[i] === curId ? -.02 : 0) : 0;
+    if (P[2] <= FLZ[i] + hold) return; FLZ[i] = P[2]; FLID[i] = curId;
     if (ix < x0) x0 = ix; if (ix > x1) x1 = ix; if (iy < y0) y0 = iy; if (iy > y1) y1 = iy;
     if (!core && hash((o.fresh > .05 ? i * .618 + Math.floor(t * 7) * 1.37 : kk * .618)) < .015 + .13 * o.fresh) { R[i] = G[i] = B[i] = .95 * o.alpha; GL[i] = 42; return; }   // glitter
     R[i] = r; G[i] = g; B[i] = b; GL[i] = ch;
@@ -746,7 +749,8 @@ SCENES.push({
     if (t > .3 && bud < .02) { const I = .5 + .5 * Math.sin(t * 6); put(cx, cy, I, I * .85, I * .95, 42); }   // a single point of light
     if (bud > 0) drawFlower({
       x: cx, y: cy + S * .12, R: S * .58 * size, open: bloom, fresh: 1 - smooth(.2, 2.6, u),
-      yaw: t * .2, pitch: .25 + .62 * bloom, alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
+      yaw: t * .12, pitch: .25 + .62 * bloom,   // a slow, gentle turn: petals rising on the right step up a whole (tall) row at a time, so they must move slowly
+      alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
     }, t);
   }
 });
