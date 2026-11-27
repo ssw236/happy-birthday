@@ -788,7 +788,7 @@ SCENES.push({
       });
     }
     this.florets = Array.from({ length: 11 }, () => ({ x: r() * W, y: r() * H, rad: Math.max(CW * 5, S * (.07 + r() * .05)), sp: 10 + r() * 18, ph: r() * 6.28, rs: (r() - .5) * .9, I: .26 + r() * .16 }));
-    this.hearts = Array.from({ length: 10 }, (_, k) => ({ x: (.06 + .88 * r()) * W, sp: 28 + r() * 40, t0: 4.2 + k * .42 + r() * .3, sz: Math.max(CW * 4.5, S * (.05 + r() * .035)), sw: r() * 6.28 }));
+    this.hearts = Array.from({ length: 12 }, (_, k) => ({ x: (.06 + .88 * r()) * W, sp: H * (.17 + .09 * r()), t0: 3.6 + k * .5 + r() * .3, sz: Math.max(CW * 4.5, S * (.05 + r() * .035)), sw: r() * 6.28 }));
   },
   pos(q, t) {
     if (t < 8.3) {
@@ -818,7 +818,7 @@ SCENES.push({
     }
     for (const h of this.hearts) {                     // little hearts floating up
       const u = t - h.t0; if (u < 0) continue;
-      const hx = h.x + Math.sin(u * 1.6 + h.sw) * CW * 3, hy = H + h.sz - u * h.sp, a = Math.min(1, u * 2) * out;
+      const hx = h.x + Math.sin(u * 1.6 + h.sw) * CW * 3, hy = H + h.sz - u * h.sp, a = Math.min(1, u * 2) * (1 - smooth(10.9, 11.9, t));   // all the way up to the top
       if (hy < -h.sz || a <= 0) continue;
       box(hx - h.sz, hy - h.sz, hx + h.sz, hy + h.sz, (i, px, py) => {
         const qx = (px - hx) / h.sz * 1.25, qy = -(py - hy) / h.sz * 1.25 + .2;
@@ -843,16 +843,11 @@ SCENES.push({
         if (e < 1) { const p2 = this.pos(q, t - .05); put(p2[0], p2[1], .35, .22, .3, 46); }
       }
     }
-    const sp = this.swash, sf = easeInOut((t - 4.0) / 1.4) * out;   // a swash underline that draws itself
+    const sp = this.swash, sf = easeInOut((t - 4.0) / 1.4) * out;   // a straight underline that draws itself, soft at both ends
     if (sf > 0) {
-      const n = 80, pts = [];
-      for (let k = 0; k <= n; k++) {
-        const u = k / n, env = Math.sin(Math.PI * Math.min(1, u * 1.1)) ** .6;
-        pts.push([sp.x0 + (sp.x1 - sp.x0) * u, sp.y + sp.amp * Math.sin(u * 4.6 - .4) * env - sp.amp * .5 * u]);
-      }
-      const lim = Math.floor(n * clamp((t - 4.0) / 1.4));
-      for (let k = 0; k < lim; k++) lineSeg(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], 1, 1, .72, .58, out);
-      if (lim < n && lim > 0) put(pts[lim][0], pts[lim][1], 1, .95, .9, 42);
+      const n = 80, lim = Math.floor(n * clamp((t - 4.0) / 1.4)), X = k => sp.x0 + (sp.x1 - sp.x0) * k / n;
+      for (let k = 0; k < lim; k++) { const I = out * (.3 + .7 * Math.pow(Math.sin(Math.PI * (k + .5) / n), .5)); lineSeg(X(k), sp.y, X(k + 1), sp.y, 1, 1, .72, .58, I, 0, 45); }
+      if (lim < n && lim > 0) put(X(lim), sp.y, 1, .95, .9, 42);
     }
   }
 });
@@ -1173,9 +1168,9 @@ SCENES.push({
     this.crabTop = cncR[2] - CH * 3; this.crabBot = cncR[3] + CH * 3;
     this.hc = P ? [W * .5, H * .5] : [W * .52, H * .42]; this.hs = P ? Math.min(W, H) * .14 : Math.min(W * .07, H * .125);
   },
-  // a constellation line that stays as her goat (or his crab) appears, turning a colour from that drawing; it is brightest
-  // where it crosses the figure, so it reads as part of the drawing and never as a dark seam
-  seam(x0, y0, x1, y1, f, c0, c1, I, k) {
+  // a constellation line that, as her goat (or his crab) appears, turns a colour from that drawing and then slowly fades:
+  // it blends into whatever lies under it (the figure, or the night sky), so it melts away and never leaves a dark seam
+  seam(x0, y0, x1, y1, f, c0, c1, I, k, al) {
     const a0 = cx_(x0), b0 = cy_(y0), a1 = cx_(x1), b1 = cy_(y1), fig = this.fig, asp = GH / GW, gch = slopeGlyph(x1 - x0, y1 - y0);
     const n = Math.max(1, Math.ceil(Math.max(Math.abs(a1 - a0), Math.abs(b1 - b0)) * 1.3)), m = Math.floor(n * clamp(f));
     for (let q = 0; q <= m; q++) {
@@ -1185,11 +1180,11 @@ SCENES.push({
       const i = y * COLS + x;
       const J = k > 0 && fig && fig[i] ? 1 : .85;
       const r = c0[0] * I + (c1[0] * J - c0[0] * I) * k, g = c0[1] * I + (c1[1] * J - c0[1] * I) * k, b = c0[2] * I + (c1[2] * J - c0[2] * I) * k;
-      R[i] = r; G[i] = g; B[i] = b; GL[i] = gch;
+      R[i] += (r - R[i]) * al; G[i] += (g - G[i]) * al; B[i] += (b - B[i]) * al; if (al > .3) GL[i] = gch;
     }
   },
   draw(t) {
-    const GOLD = [1, .84, .58], PEACH = [1, .86, .74], lc = 1 - smooth(5.7, 6.3, t), fa = smooth(6.25, 7.5, t), fc = smooth(6.65, 7.9, t), mwk = 1 - .8 * fa, G1 = this.G1;
+    const GOLD = [1, .84, .58], PEACH = [1, .86, .74], ga = 1 - smooth(6.4, 9.4, t), gc = 1 - smooth(6.8, 9.8, t), lc = 1 - smooth(5.7, 6.3, t), fa = smooth(6.25, 7.5, t), fc = smooth(6.65, 7.9, t), mwk = 1 - .8 * fa, G1 = this.G1;
     for (let i = 0; i < N; i++) { const m = this.mw[i] * mwk; if (m > .02) { const I = m * (.85 + .15 * Math.sin(t * .8 + i)); R[i] = I * .75; G[i] = I * .65; B[i] = I; GL[i] = -1; } }
     for (const s of this.stars) {
       const I = (.15 + .55 * s.m) * (.55 + .45 * (.5 + .5 * Math.sin(t * s.sp + s.ph)));
@@ -1215,33 +1210,33 @@ SCENES.push({
     for (let k = 0; k < P.length; k++) {
       const a = P[k], b = P[(k + 1) % P.length], f = clamp((t - 3.3 - k * seg) / seg);
       if (f <= 0) continue;
-      this.seam(a.x, a.y, b.x, b.y, f, [.95, .55, .78], GOLD, .72, fa);   // pink lines turning the gold of her horns
+      if (ga > 0) this.seam(a.x, a.y, b.x, b.y, f, [.95, .55, .78], GOLD, .72, fa, ga);   // pink lines warming to the gold of her horns, fading slowly
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .95, 42);
     }
     CNC_LINES.forEach(([j, k], n) => {                 // his constellation lines
       const a = this.cpts[j], b = this.cpts[k], f = clamp((t - 4.1 - n * .25) / .25);
       if (f <= 0) return;
-      this.seam(a.x, a.y, b.x, b.y, f, [1, .7, .6], PEACH, .72, fc);      // and his a soft peach on his coral shell
+      if (gc > 0) this.seam(a.x, a.y, b.x, b.y, f, [1, .7, .6], PEACH, .72, fc, gc);      // and his to a soft peach on his coral shell
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .85, 42);
     });
-    const star = (p, ta, k, mo, ac) => {              // once the friends appear, their stars soften so the faces stay clear
-      const dim = 1 - .5 * mo; if (t < ta) return;
-      const ci = cellIdx(p.x, p.y);
-      if (mo > 0 && ci >= 0 && this.fig && this.fig[ci]) {
-        const pop = easeBack((t - ta) / .5), I = (clamp((5 - p.mag) / 2.2) * .5 + .5) * (.85 + .15 * Math.sin(t * 3 + k)) * pop;
-        const sr = I, sg = I * .92, sb = I * .96, tr = ac[0], tg = ac[1], tb = ac[2];   // a bright glint in the drawing's colour
-        R[ci] = sr + (tr - sr) * mo; G[ci] = sg + (tg - sg) * mo; B[ci] = sb + (tb - sb) * mo; GL[ci] = p.mag < 3.2 ? 64 : 42; return;
+    const star = (p, ta, k, mo, ac, al) => {          // once the friends appear, their stars take the drawing's colour and slowly fade away
+      const dim = 1 - .5 * mo; if (t < ta || al <= 0) return;
+      const ci = cellIdx(p.x, p.y), pop = easeBack((t - ta) / .5);
+      if (mo > 0 && ci >= 0 && this.fig && this.fig[ci]) {   // over a figure: a glint in its colour, melting into it
+        const I = (clamp((5 - p.mag) / 2.2) * .5 + .5) * (.85 + .15 * Math.sin(t * 3 + k)) * pop;
+        const sr = I + (ac[0] - I) * mo, sg = I * .92 + (ac[1] - I * .92) * mo, sb = I * .96 + (ac[2] - I * .96) * mo;
+        R[ci] += (sr - R[ci]) * al; G[ci] += (sg - G[ci]) * al; B[ci] += (sb - B[ci]) * al; if (al > .3) GL[ci] = p.mag < 3.2 ? 64 : 42; return;
       }
-      const pop = easeBack((t - ta) / .5), flash = Math.max(0, 1 - (t - ta) * 2);
-      const I = ((clamp((5 - p.mag) / 2.2) * .5 + .5) * (.85 + .15 * Math.sin(t * 3 + k)) * pop + flash * .5) * dim;
+      const flash = Math.max(0, 1 - (t - ta) * 2);
+      const I = ((clamp((5 - p.mag) / 2.2) * .5 + .5) * (.85 + .15 * Math.sin(t * 3 + k)) * pop + flash * .5) * dim * al;
       put(p.x, p.y, I, I * .92, I * .96, p.mag < 3.2 ? 64 : 42);
       if (p.mag < 3.9 && pop > .5 && mo < 1) {         // the little cross of light fades as the figures arrive, and never crosses them
         const A = I * .55 * (1 - mo), arm = (x, y, ch) => { const i = cellIdx(x, y); if (i < 0 || (mo > 0 && this.fig[i])) return; R[i] = A; G[i] = A * .8; B[i] = A * .9; GL[i] = ch; };
         arm(p.x - CW, p.y, 45); arm(p.x + CW, p.y, 45); arm(p.x, p.y - CH, 124); arm(p.x, p.y + CH, 124);
       }
     };
-    this.pts.forEach((p, k) => star(p, 1.2 + k * .2, k, fa, GOLD));
-    this.cpts.forEach((p, k) => star(p, 3.0 + k * .22, k + 20, fc, PEACH));
+    this.pts.forEach((p, k) => star(p, 1.2 + k * .2, k, fa, GOLD, ga));
+    this.cpts.forEach((p, k) => star(p, 3.0 + k * .22, k + 20, fc, PEACH, gc));
     if (t > 4.1 && lc > 0) for (let k = 0; k < 7; k++) {   // the Beehive cluster glittering between the Aselli
       const I = (.3 + .3 * Math.sin(t * 3 + k * 1.7)) * smooth(4.1, 4.8, t) * lc;
       put(this.bee[0] + (hash(k + 1) - .5) * CW * 5, this.bee[1] + (hash(k + 9) - .5) * CH * 2.5, I, I * .9, I * .8, 46);
@@ -1619,8 +1614,11 @@ function cruiseBoat(xc, y0, Lb, t, k) {
 }
 const FW = Array.from({ length: 10 }, (_, k) => ({
   t: 1.1 + k * 1.02 + hash(k + 1) * .3, x: .1 + .8 * hash(k + 11), y: .07 + .2 * hash(k + 21),
-  c: [[1, .55, .75], [1, .82, .45], [.8, .65, 1], [.6, 1, .85], [1, .75, .9]][k % 5], heart: k === 4 || k === 9, willow: k === 2 || k === 6
-}));
+  c: [[1, .55, .75], [1, .82, .45], [.8, .65, 1], [.6, 1, .85], [1, .75, .9]][k % 5], heart: k === 4 || k === 9, willow: k === 2 || k === 6,
+  core: [[1, .9, .6], [1, 1, 1], [.75, .9, 1]][k % 3], glitter: k % 2 === 1
+})).concat([[11.5, .24, .14, [1, .55, .75]], [11.85, .5, .08, [1, .82, .45]], [12.2, .76, .15, [.8, .65, 1]]].map(([t, x, y, c], k) => ({   // a little finale
+  t, x, y, c, heart: false, willow: false, core: [1, 1, 1], glitter: true, big: k === 1
+})));
 SCENES.push({
   dur: 15, glow: .85, bg0: [.012, .01, .045], bg1: [.1, .035, .1],
   caps: [{ at: 1.2, text: "welcome home, birthday girl", zh: "欢迎回家，小寿星" }, { at: 8.4, text: "the whole city lights up for you", zh: "整座城市都为你亮起" }],
@@ -1737,25 +1735,51 @@ SCENES.push({
       else { R[i] = .16; G[i] = .06; B[i] = .14; GL[i] = 46; }
     });
     lineSeg(s.x0, s.y0 - CH * .6, s.x1, s.y0 - CH * .6, 1, .7, .6, .85, .7, 0, 45); lineSeg(s.x0, s.y1 + CH * .6, s.x1, s.y1 + CH * .6, 1, .7, .6, .85, .7, 0, 45);
-    for (const f of FW) {                              // fireworks: peonies, hearts and golden willows
-      const ox = f.x * W, by = f.y * H, tl = f.t - .85;
-      if (t >= tl && t < f.t) {
-        const y = yH + (by - yH) * easeOut((t - tl) / .85);
-        put(ox, y, 1, .9, .7, 124); put(ox, y + CH, .5, .4, .3, 46); put(ox, y + CH * 2, .25, .2, .15, 46);
+    for (const f of FW) {                              // fireworks: two-colour peonies with glitter, heart shells, golden willows
+      const ox = f.x * W, by = f.y * H, tl = f.t - .9;
+      if (t >= tl && t < f.t) {                        // the rising shell: a bright head, a flickering tail of embers, sparks dropping away
+        const yAt = q => yH + (by - yH) * easeOut(clamp((q - tl) / .9)), xAt = q => ox + Math.sin(q * 19 + f.t * 3) * CW * .35;
+        for (let q = 8; q >= 0; q--) {
+          const tq = t - q * .03; if (tq < tl) continue;
+          const I = q ? .6 * (1 - q / 9) * (.6 + .4 * hash(q + Math.floor(t * 30))) : 1;
+          addc(xAt(tq), yAt(tq), I, I * .82, I * .55, q ? (q < 4 ? 124 : 46) : 42);
+        }
+        for (let q = 0; q < 4; q++) {
+          const ts = tl + (t - tl) * hash(q * 7 + f.t), age = t - ts; if (age > .5) continue;
+          const I = .5 * (1 - age / .5); addc(xAt(ts) + (hash(q + f.t) - .5) * CW * 5 * age, yAt(ts) + age * age * H * .15, I, I * .7, I * .4, 46);
+        }
       }
-      const life = f.willow ? 2.6 : 1.9, u = t - f.t; if (u < 0 || u > life) continue;
-      const n = f.heart ? 64 : f.willow ? 36 : 44, kd = f.willow ? 1.2 : 1.7, V0 = Math.min(W, H) * (f.willow ? .13 : .17) * kd, g = H * (f.willow ? .16 : .09);
-      const fade = Math.pow(1 - u / life, 1.4), col = f.willow ? [1, .78, .4] : f.c, ch = u < .55 ? 42 : u < 1.1 ? 43 : 46;
+      const life = f.willow ? 2.9 : 2.2, u = t - f.t; if (u < 0 || u > life) continue;
+      const big = f.big ? 1.3 : 1, kd = f.willow ? 1.2 : 1.7, V0 = Math.min(W, H) * (f.willow ? .13 : .17) * kd * big, g = H * (f.willow ? .16 : .09);
+      const fade = Math.pow(1 - u / life, 1.3), hot = 1 - smooth(0, .35, u);
       const at = (uu, dx, dy) => { const disp = (1 - Math.exp(-kd * uu)) / kd; return [ox + dx * V0 * disp, by + dy * V0 * disp + .5 * g * uu * uu]; };
-      for (let j = 0; j < n; j++) {
-        let dx, dy;
-        if (f.heart) { const a = j / n * 6.2831853; dx = 16 * Math.pow(Math.sin(a), 3) / 17; dy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) / 17; }
-        else { const a = j / n * 6.2831853 + hash(j + f.t) * .2, sp = .75 + .25 * hash(j * 3.3 + f.t); dx = Math.cos(a) * sp; dy = Math.sin(a) * sp; }
-        const I = fade * (.7 + .3 * hash(j + Math.floor(t * 18))), p0 = at(u, dx, dy);
-        addc(p0[0], p0[1], col[0] * I, col[1] * I, col[2] * I, ch);
-        if (f.willow) for (let q = 1; q <= 3 && u - q * .1 > 0; q++) { const pq = at(u - q * .1, dx, dy), Iq = I * (1 - q / 4); addc(pq[0], pq[1], col[0] * Iq * .7, col[1] * Iq * .6, col[2] * Iq * .4, 44); }
+      if (u < .22) {                                   // the flash
+        const I = 1 - u / .22, rr = CW * 7;
+        box(ox - rr, by - rr * .6, ox + rr, by + rr * .6, (i, px, py) => { const d = Math.hypot((px - ox) / rr, (py - by) / (rr * .6)); if (d < 1) { const k2 = I * (1 - d) * (1 - d); R[i] += k2 * .9; G[i] += k2 * .8; B[i] += k2 * .75; } });
       }
-      if (u < .15) { const I = 1 - u / .15; box(ox - CW * 3, by - CH * 2, ox + CW * 3, by + CH * 2, i => { R[i] += I * .6; G[i] += I * .5; B[i] += I * .5; }); }
+      {                                                // and the soft coloured smoke it leaves hanging in the air
+        const rr = V0 * (.35 + .5 * (1 - Math.exp(-u * 1.5))), I = .05 * fade * smooth(0, .4, u);
+        if (I > .004) box(ox - rr, by - rr, ox + rr, by + rr, (i, px, py) => { const d = Math.hypot(px - ox, py - by - g * u * u * .2) / rr; if (d < 1) { const k2 = I * (1 - d * d); R[i] += f.c[0] * k2; G[i] += f.c[1] * k2; B[i] += f.c[2] * k2; } });
+      }
+      const stars = (n, sp0, col, K, dtK, heart) => {   // n stars flying out, white-hot at first and then their colour, each with a thinning streak
+        const c = [col[0] + (1 - col[0]) * hot, col[1] + (.96 - col[1]) * hot, col[2] + (.9 - col[2]) * hot];
+        for (let j = 0; j < n; j++) {
+          let dx, dy;
+          if (heart) { const a = j / n * 6.2831853; dx = 16 * Math.pow(Math.sin(a), 3) / 17 * sp0; dy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) / 17 * sp0; }
+          else { const a = j / n * 6.2831853 + hash(j + f.t + sp0) * .25, sp = sp0 * (.78 + .22 * hash(j * 3.3 + f.t)); dx = Math.cos(a) * sp; dy = Math.sin(a) * sp; }
+          const tw = f.glitter && u > life * .5 ? (hash(j * 1.7 + Math.floor(t * 22)) > .5 ? 1.25 : .12) : .8 + .2 * hash(j + Math.floor(t * 18));   // glitter crackles at the end
+          const I = fade * tw, pts = [at(u, dx, dy)];
+          for (let q = 1; q <= K; q++) { const uq = u - q * dtK; if (uq <= 0) break; pts.push(at(uq, dx, dy)); }
+          for (let q = pts.length - 1; q >= 1; q--) {
+            const Iq = I * Math.pow(1 - q / (K + 1), 1.5) * .8;
+            addc(pts[q][0], pts[q][1], c[0] * Iq, c[1] * Iq * (f.willow ? .85 : 1), c[2] * Iq * (f.willow ? .6 : 1), slopeGlyph(pts[q - 1][0] - pts[q][0], pts[q - 1][1] - pts[q][1]));
+          }
+          addc(pts[0][0], pts[0][1], c[0] * I, c[1] * I, c[2] * I, u < .5 ? 42 : u < 1.2 ? 43 : 46);
+        }
+      };
+      if (f.heart) { stars(72, 1, f.c, 3, .035, true); stars(18, .35, [1, .95, .9], 2, .03); }
+      else if (f.willow) stars(46, 1, [1, .78, .4], 10, .075);
+      else { stars(Math.round(60 * big), 1, f.c, 5, .035); stars(22, .45, f.core, 3, .03); }
     }
     reflect(rowH, t, [.35, .45, 1]);
     for (const b of this.boats) cruiseBoat(W * (b.x0 + b.v * (t / 13)), b.y, b.Lb, t, b.k);
@@ -1785,7 +1809,8 @@ const ZN = 6;                                                                  /
 const zStr = k => Math.round(k * (ZN - 1) / 20);
 
 SCENES.push({
-  dur: 14, glow: .8, fadeOut: .25, bg0: [.008, .008, .035], bg1: [.03, .012, .05],
+  dur: 14, glow: .8, fadeOut: .01,   // no fade: by the end only the point of light is left, and the butterfly grows from it
+  bg0: [.008, .008, .035], bg1: [.03, .012, .05],
   caps: [{ at: 2.2, text: "your fingers, dancing on the strings", zh: "你的指尖，在琴弦上起舞" }, { at: 8.4, text: "keep practicing, i’ll always be listening", zh: "继续练习吧，我会一直听着" }],
   cues: [[.1, () => {
     for (const e of ZEV) zheng(ZSTR[e.k], e.t - .1, e.v, e.b || 0);
@@ -1812,7 +1837,7 @@ SCENES.push({
   bridgeU(s) { return .68 - .36 * Math.pow(s / (ZN - 1), 1.1); },             // the movable bridges, a diagonal line like geese in flight
   draw(t) {
     const g = this.g, end = 1 - smooth(12.2, 13.3, t); let A = easeOut(t / 1.2) * end;   // everything fades in, and at the end gathers into one point of light
-    for (const s of this.stars) { const I = (.12 + .45 * s.m) * (.55 + .45 * Math.sin(t * s.sp + s.ph)) * Math.min(1, t / 1.5); put(s.x, s.y, I * .9, I * .85, I, s.m > .6 ? 43 : 46); }
+    for (const s of this.stars) { const I = (.12 + .45 * s.m) * (.55 + .45 * Math.sin(t * s.sp + s.ph)) * Math.min(1, t / 1.5) * end; put(s.x, s.y, I * .9, I * .85, I, s.m > .6 ? 43 : 46); }
     for (const f of this.florets) {                    // light-pink hydrangea florets drifting by, like at the start
       const span = H + 2 * f.rad, y = ((f.y + t * f.sp) % span + span) % span - f.rad, x = f.x + Math.sin(t * .4 + f.ph) * CW * 4, rot = f.ph + t * f.rs;
       box(x - f.rad, y - f.rad, x + f.rad, y + f.rad, (i, px, py) => {
@@ -2087,8 +2112,8 @@ SCENES.push({
       }
       return;
     }
-    for (const d of this.dust) { const I = Math.pow(Math.max(0, Math.sin(t * d.sp + d.ph)), 8) * .5; if (I > .05) put(d.x, d.y, I * .9, I * .75, I, 46); }
-    if (t > .35 && t < 1.1) { const I = .55 + .45 * Math.sin(t * 9); put(c.x, c.y, I, I * .85, I * .95, 42); }   // a single point of light
+    for (const d of this.dust) { const I = Math.pow(Math.max(0, Math.sin(t * d.sp + d.ph)), 8) * .5 * Math.min(1, t / 1.5); if (I > .05) put(d.x, d.y, I * .9, I * .75, I, 46); }
+    if (t < 1.1) { const I = .55 + .45 * Math.sin(t * 9); put(c.x, c.y, I, I * .85, I * .95, 42); }   // a single point of light (the guzheng's notes gathered into it)
     const cs = easeOut((t - .7) / 2.4), h = A * .62 * (.06 + .94 * cs), w = h * .36, front = 1.05 - 2.2 * smooth(3.9, 4.75, t);
     if (t > .7 && front > -1.1) {                     // 1) the chrysalis grows; 2) a band of light slides over it; 3) it melts into glitter from the top
       const sweep = (t - 3.0) / .9, sweepAt = 1.4 - 2.8 * sweep;
@@ -2371,10 +2396,10 @@ SCENES.push({
     });
     for (const m of this.mops) {                       // long stems grow up from below the ribbon, through the wrap, to each cluster
       const g = easeInOut((t - .9 - (m.t0 - 2.5) * .1) / 1.7); if (g <= 0) continue;
-      const x0 = cx + (m.x - cx) * .06, y0 = tipY + .36 * bq, xc = cx + (m.x - cx) * .22, yc = topBase + .12 * bq;
+      const x0 = cx + (m.x - cx) * .06, y0 = tipY + .07 * bq, /* the stems stay inside the wrap, just their ends peeking out */ xc = cx + (m.x - cx) * .22, yc = topBase + .12 * bq;
       const P = u => { const v = 1 - u; return [v * v * x0 + 2 * v * u * xc + u * u * m.x, v * v * y0 + 2 * v * u * yc + u * u * m.y]; };
       let p0 = P(0); const n = 26, kk = Math.ceil(n * g);
-      for (let j = 1; j <= kk; j++) { const p1 = P(Math.min(g, j / n)); lineSeg(p0[0], p0[1], p1[0], p1[1], 1, .36, .8, .44, .92); p0 = p1; }
+      for (let j = 1; j <= kk; j++) { const p1 = P(Math.min(g, j / n)), low = p1[1] > tipY - CH * .5; lineSeg(p0[0], p0[1], p1[0], p1[1], 1, low ? .26 : .36, low ? .5 : .8, low ? .32 : .44, low ? .6 : .92); p0 = p1; }   // the cut ends a soft, dim green
       if (g < 1) put(p0[0], p0[1], .85, 1, .7, 42);   // a little bud of light at the growing tip
     }
     for (const m of this.mops) {                       // hydrangea mopheads, floret by floret
