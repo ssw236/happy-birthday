@@ -1169,14 +1169,34 @@ SCENES.push({
     this.crabTop = cncR[2] - CH * 3; this.crabBot = cncR[3] + CH * 3;
     this.hc = P ? [W * .5, H * .5] : [W * .52, H * .42]; this.hs = P ? Math.min(W, H) * .14 : Math.min(W * .07, H * .125);
   },
+  // a constellation line that stays as her goat (or his crab) appears, turning a colour from that drawing; it is brightest
+  // where it crosses the figure, so it reads as part of the drawing and never as a dark seam
+  seam(x0, y0, x1, y1, f, c0, c1, I, k) {
+    const a0 = cx_(x0), b0 = cy_(y0), a1 = cx_(x1), b1 = cy_(y1), fig = this.fig, asp = GH / GW, gch = slopeGlyph(x1 - x0, y1 - y0);
+    const n = Math.max(1, Math.ceil(Math.max(Math.abs(a1 - a0), Math.abs(b1 - b0)) * 1.3)), m = Math.floor(n * clamp(f));
+    for (let q = 0; q <= m; q++) {
+      const fx = a0 + (a1 - a0) * q / n, fy = b0 + (b1 - b0) * q / n;
+      if (Math.hypot(fx - a0, (fy - b0) * asp) < 2 || Math.hypot(fx - a1, (fy - b1) * asp) < 2) continue;   // a little gap at each star
+      const x = Math.round(fx), y = Math.round(fy); if (x < 0 || y < 0 || x >= COLS || y >= ROWS) continue;
+      const i = y * COLS + x;
+      const J = k > 0 && fig && fig[i] ? 1 : .85;
+      const r = c0[0] * I + (c1[0] * J - c0[0] * I) * k, g = c0[1] * I + (c1[1] * J - c0[1] * I) * k, b = c0[2] * I + (c1[2] * J - c0[2] * I) * k;
+      R[i] = r; G[i] = g; B[i] = b; GL[i] = gch;
+    }
+  },
   draw(t) {
-    const la = 1 - smooth(5.5, 6.1, t), lc = 1 - smooth(5.7, 6.3, t), fa = smooth(6.25, 7.5, t), fc = smooth(6.65, 7.9, t), mwk = 1 - .8 * fa, G1 = this.G1;
+    const GOLD = [1, .84, .58], PEACH = [1, .86, .74], lc = 1 - smooth(5.7, 6.3, t), fa = smooth(6.25, 7.5, t), fc = smooth(6.65, 7.9, t), mwk = 1 - .8 * fa, G1 = this.G1;
     for (let i = 0; i < N; i++) { const m = this.mw[i] * mwk; if (m > .02) { const I = m * (.85 + .15 * Math.sin(t * .8 + i)); R[i] = I * .75; G[i] = I * .65; B[i] = I; GL[i] = -1; } }
     for (const s of this.stars) {
       const I = (.15 + .55 * s.m) * (.55 + .45 * (.5 + .5 * Math.sin(t * s.sp + s.ph)));
       put(s.x, s.y, I * (.85 + .15 * s.tint), I * .85, I, s.m > .6 ? 43 : 46);
     }
     const bob = Math.sin(t * 2.1) * CH * .25, blink = k => ((t + k) % 3.4 < .14 ? .12 : 1);
+    const morph = fa > 0 || fc > 0;
+    if (morph) {
+      if (!this.pre || this.pre.length !== N * 3) { this.pre = new Float32Array(N * 3); this.fig = new Uint8Array(N); }
+      for (let i = 0, j = 0; i < N; i++, j += 3) { this.pre[j] = R[i]; this.pre[j + 1] = G[i]; this.pre[j + 2] = B[i]; }
+    }
     if (fa > 0) {                                      // her goat appears from the nose back, a little sparkle along the edge
       const front = this.revA + (this.revB - this.revA) * easeInOut((t - 5.4) / 2.2), g = this.goat;
       drawFigure({ x: g.x, y: g.y + bob, s: g.s, bx: g.bx }, goatLayers({ blink: blink(0), ear: .12 * Math.sin(t * 1.7) }), () => fa);   // a soft fade in, once the stars are done
@@ -1185,32 +1205,39 @@ SCENES.push({
       const front = this.crabTop + (this.crabBot - this.crabTop) * easeInOut((t - 6.4) / 1.6), c = this.crabF;
       drawFigure({ x: c.x, y: c.y - bob, s: c.s, bx: c.bx }, crabLayers({ blink: blink(1.7), wave: t * 4 }), () => fc);
     }
+    if (morph) { const pre = this.pre, fig = this.fig; for (let i = 0, j = 0; i < N; i++, j += 3) fig[i] = R[i] !== pre[j] || G[i] !== pre[j + 1] || B[i] !== pre[j + 2] ? 1 : 0; }
+    else if (this.fig) this.fig.fill(0);
     const P = this.pts, seg = .2;                     // her constellation lines
     for (let k = 0; k < P.length; k++) {
       const a = P[k], b = P[(k + 1) % P.length], f = clamp((t - 3.3 - k * seg) / seg);
       if (f <= 0) continue;
-      if (la > 0) lineSeg(a.x, a.y, b.x, b.y, f, .95, .55, .78, .72 * la, 2);
+      this.seam(a.x, a.y, b.x, b.y, f, [.95, .55, .78], GOLD, .72, fa);   // pink lines turning the gold of her horns
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .95, 42);
     }
     CNC_LINES.forEach(([j, k], n) => {                 // his constellation lines
       const a = this.cpts[j], b = this.cpts[k], f = clamp((t - 4.1 - n * .25) / .25);
       if (f <= 0) return;
-      if (lc > 0) lineSeg(a.x, a.y, b.x, b.y, f, 1, .7, .6, .72 * lc, 2);
+      this.seam(a.x, a.y, b.x, b.y, f, [1, .7, .6], PEACH, .72, fc);      // and his a soft peach on his coral shell
       if (f < 1) put(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, 1, .9, .85, 42);
     });
-    const star = (p, ta, k, dim) => {             // once the friends appear, their stars step back so the faces stay clear
-      if (t < ta || dim < .03) return;
+    const star = (p, ta, k, mo, ac) => {              // once the friends appear, their stars soften so the faces stay clear
+      const dim = 1 - .5 * mo; if (t < ta) return;
+      const ci = cellIdx(p.x, p.y);
+      if (mo > 0 && ci >= 0 && this.fig && this.fig[ci]) {
+        const pop = easeBack((t - ta) / .5), I = (clamp((5 - p.mag) / 2.2) * .5 + .5) * (.85 + .15 * Math.sin(t * 3 + k)) * pop;
+        const sr = I, sg = I * .92, sb = I * .96, tr = ac[0], tg = ac[1], tb = ac[2];   // a bright glint in the drawing's colour
+        R[ci] = sr + (tr - sr) * mo; G[ci] = sg + (tg - sg) * mo; B[ci] = sb + (tb - sb) * mo; GL[ci] = p.mag < 3.2 ? 64 : 42; return;
+      }
       const pop = easeBack((t - ta) / .5), flash = Math.max(0, 1 - (t - ta) * 2);
       const I = ((clamp((5 - p.mag) / 2.2) * .5 + .5) * (.85 + .15 * Math.sin(t * 3 + k)) * pop + flash * .5) * dim;
       put(p.x, p.y, I, I * .92, I * .96, p.mag < 3.2 ? 64 : 42);
-      if (p.mag < 3.9 && pop > .5 && dim > .5) {
-        const A = I * .55;
-        put(p.x - CW, p.y, A, A * .8, A * .9, 45); put(p.x + CW, p.y, A, A * .8, A * .9, 45);
-        put(p.x, p.y - CH, A, A * .8, A * .9, 124); put(p.x, p.y + CH, A, A * .8, A * .9, 124);
+      if (p.mag < 3.9 && pop > .5 && mo < 1) {         // the little cross of light fades as the figures arrive, and never crosses them
+        const A = I * .55 * (1 - mo), arm = (x, y, ch) => { const i = cellIdx(x, y); if (i < 0 || (mo > 0 && this.fig[i])) return; R[i] = A; G[i] = A * .8; B[i] = A * .9; GL[i] = ch; };
+        arm(p.x - CW, p.y, 45); arm(p.x + CW, p.y, 45); arm(p.x, p.y - CH, 124); arm(p.x, p.y + CH, 124);
       }
     };
-    this.pts.forEach((p, k) => star(p, 1.2 + k * .2, k, la));
-    this.cpts.forEach((p, k) => star(p, 3.0 + k * .22, k + 20, lc));
+    this.pts.forEach((p, k) => star(p, 1.2 + k * .2, k, fa, GOLD));
+    this.cpts.forEach((p, k) => star(p, 3.0 + k * .22, k + 20, fc, PEACH));
     if (t > 4.1 && lc > 0) for (let k = 0; k < 7; k++) {   // the Beehive cluster glittering between the Aselli
       const I = (.3 + .3 * Math.sin(t * 3 + k * 1.7)) * smooth(4.1, 4.8, t) * lc;
       put(this.bee[0] + (hash(k + 1) - .5) * CW * 5, this.bee[1] + (hash(k + 9) - .5) * CH * 2.5, I, I * .9, I * .8, 46);
