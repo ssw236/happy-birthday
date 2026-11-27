@@ -1848,89 +1848,126 @@ SCENES.push({
 SCENES.push({
   dur: 12.5, fadeIn: .01, glow: .85, bg0: [.006, .02, .024], bg1: [.012, .05, .046],
   caps: [{ at: 4, text: "you take care of everyone" }, { at: 8, text: "let me take care of you" }],
-  cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [3.3, () => roll([70, 74, 77, 82, 86], 0, .06, .2)]]
+  cues: [[.15, () => playBars([['Bb', [[74, 0, 1], [77, 1, 1], [81, 2, 2]]], ['F', [[79, 0, 1], [77, 1, 1], [72, 2, 2]]], ['Gm', [[74, 0, 1], [70, 1, 1], [67, 2, 2]]], ['C', [[72, 0, 2], [76, 2, 2]]]], 0, .76, .44)], [3.3, () => roll([70, 74, 77, 82, 86], 0, .06, .2)], [6.65, () => roll([96, 93, 89, 86, 84, 81], 0, .05, .2)]]
     .concat([5.2, 6.8, 8.4, 10].map((x, k) => [x, () => piano(k % 2 ? 89 : 86, 0, .13, 2.4)])),
   init() {
-    const r = rng(77), P = W < H, K = Math.max(5, Math.round(W / Math.max(70, S * .34))), bw = W / K;
-    // two rows of jade crystal prisms: a taller, dimmer row behind, a brighter row in front
-    const mk = (k, back) => ({ xc: (k + (back ? 0 : .5) + (r() - .5) * .25) * bw, hw: bw * (back ? .34 : .42) * (.8 + .4 * r()), h: H * (back ? .34 + .14 * r() : .22 + .16 * r()), lean: (r() - .5) * .3,
-      d: Math.abs(k + (back ? -.5 : 0) - (K - 1) / 2) * .08 + (back ? .18 : 0), back, ph: r() * 1.4 });
-    this.prisms = Array.from({ length: K + 1 }, (_, k) => mk(k, true)).concat(Array.from({ length: K }, (_, k) => mk(k, false)));
-    this.orb = { x: W / 2, y: H * (P ? .34 : .33), r: Math.min(W, H) * (P ? .2 : .16) };
+    const r = rng(77), P = W < H;
+    // a row of glowing jade ice blocks standing on a dark floor
+    const nB = 3, Wt = Math.min(W * (P ? .92 : .72), H * 1.6), bw = Wt / nB, bh = bw * .95, x0 = (W - Wt) / 2;
+    this.wall = { nB, bw, bh, x0, base: H * (P ? .6 : .78), top: bw * .09, side: bw * .1 };
+    this.blocks = Array.from({ length: nB }, (_, k) => ({ x: x0 + k * bw, d: Math.abs(k - (nB - 1) / 2) * .16, s: r() * 9 }));
+    this.horizon = H * (P ? .52 : .64);
+    this.orb = { x: W / 2, y: H * (P ? .25 : .27), r: Math.min(W, H) * (P ? .17 : .13) };
     this.orbit = Array.from({ length: 56 }, (_, k) => ({ a: (k >> 1) / 28 * 6.283, ring: k % 2 }));
-    this.rise = Array.from({ length: 30 }, () => ({ x: r(), sp: .05 + r() * .08, ph: r(), sw: r() * 6.28 }));
+    this.rise = Array.from({ length: 26 }, () => ({ x: r(), sp: .05 + r() * .08, ph: r(), sw: r() * 6.28 }));
+    // where the orb lands, and the frost it spreads across the floor
+    this.ice = { x: W / 2, y: H * (P ? .74 : .9), rx: W * (P ? .66 : .58), ry: H * (P ? .14 : .11), t0: 6.65 };
+    this.shards = Array.from({ length: 18 }, () => ({ q: .25 + .7 * r(), a: r() * 6.283, h: CH * (1.5 + r() * 2.5) }));
+  },
+  drawOrb(t, cx, cy, rr, s, ringA) {
+    const o = this.orb;
+    const rings = front => {                           // two thin tilted rings of sparkles; the far half passes behind the orb
+      if (ringA <= 0) return;
+      for (const p of this.orbit) {
+        const a = p.a + t * (p.ring ? -.5 : .6), c = Math.cos(a), z = Math.sin(a), tl = p.ring ? .32 : -.24;
+        if ((z > 0) !== front) continue;
+        const I = (front ? .95 : .35) * ringA;
+        put(cx + c * rr * 1.42, cy + z * rr * 1.42 * .2 + c * rr * 1.42 * tl, I * .55, I, I * .85, front ? (p.ring ? 42 : 43) : 46);
+      }
+    };
+    rings(false);
+    box(cx - rr * 1.6, cy - rr * 1.6, cx + rr * 1.6, cy + rr * 1.6, (i, px, py) => {
+      const dx = (px - cx) / rr, dy = (py - cy) / rr, d = Math.sqrt(dx * dx + dy * dy);
+      if (d >= 1) { if (d < 1.6) { const a = Math.pow((1.6 - d) / .6, 2) * .12 * s; R[i] += a * .3; G[i] += a; B[i] += a * .8; } return; }
+      const nz = Math.sqrt(1 - d * d), core = Math.pow(1 - d, 2), fres = Math.pow(1 - nz, 2.4);
+      const swirl = .5 + .5 * Math.sin(Math.atan2(dy, dx) * 2 + d * 7 - t * 2.2);
+      const spec = Math.pow(Math.max(0, -.4 * dx - .5 * dy + .77 * nz), 30);
+      let L = .16 + .62 * core + .2 * swirl * (1 - d * .8) + .5 * fres;
+      if (d > .9) L = Math.max(L, 1);
+      R[i] = L * .3 + spec + core * .35; G[i] = L * .98 + spec; B[i] = L * .78 + spec + core * .2; GL[i] = spec > .5 ? 64 : -1;
+    });
+    for (let k = 0; k < 7; k++) {
+      const a = k * .9 + t * (k % 2 ? .7 : -.5), d = (.25 + .5 * hash(k + 3)) * rr, I = .55 + .45 * Math.sin(t * 4 + k * 2);
+      put(cx + Math.cos(a) * d, cy + Math.sin(a) * d * .9, I, I, I, 43);
+    }
+    rings(true);
   },
   draw(t) {
+    const wl = this.wall, base = wl.base, hz = this.horizon, ic = this.ice;
     for (const p of this.rise) {                       // soft healing motes drifting upward
-      const y = H - ((t * p.sp * H + p.ph * H) % (H * .9)), I = .26 * (1 - (H - y) / (H * .9));
+      const y = H - ((t * p.sp * H + p.ph * H) % (H * .9)), I = .22 * (1 - (H - y) / (H * .9)) * (1 + 2 * smooth(this.ice.t0, this.ice.t0 + 1.5, t));   // brighter once the frost sends up glints
       put(p.x * W + Math.sin(t * 1.4 + p.sw) * CW * 2, y, I * .5, I, I * .8, 43);
     }
-    for (const p of this.prisms) {                     // the crystal barrier rising from the ground, from the middle outward
-      const e = easeBack((t - .9 - p.d) / .75); if (e <= 0) continue;
-      const h = p.h * e, yTop = H - h, ap = p.hw * 1.5, dim = p.back ? .45 : 1, cu = CW / p.hw, fade = Math.min(1, e * 1.4), lx = p.lean * h;
-      box(p.xc - p.hw - Math.abs(lx), yTop, p.xc + p.hw + Math.abs(lx), H, (i, px, py) => {
-        const u = (px - p.xc - lx * (H - py) / h) / p.hw, au = Math.abs(u), yEdge = yTop + au * ap; if (au > 1 || py < yEdge) return;
-        const g = clamp((py - yTop) / h), cap = py < yTop + ap;
-        const fc = cap ? (u < 0 ? 0 : 2) : (u < -.36 ? 0 : u < .36 ? 1 : 2);
-        let I = [.62, .42, .26][fc] * (1 - .45 * g), ch = [58, 46, 46][fc];       // see-through faces: lit, middle, shaded
-        if (fc < 2 && ((((py * .7 - px) / (CW * 9) + p.ph) % 1) + 1) % 1 < .07) { I = .85; ch = 47; }   // diagonal glints across the glass
-        const band = Math.exp(-Math.pow((g + .15 - (t * .3 + p.ph) % 1.5) / .06, 2)); I += .45 * band; if (band > .5 && ch === 46) ch = 58;   // light sliding up through it
-        if (py - yEdge < CH * 1.05) { I = 1.1; ch = u < 0 ? 47 : 92; }               // bright top edges
-        else if (!cap && (Math.abs(au - .36) < cu * .6 || au > 1 - cu * 1.1)) { I = Math.max(I, .95); ch = 124; }   // crisp vertical edges
-        else if (cap && Math.abs(u) < cu * .6) { I = .95; ch = 124; }             // the ridge up to the point
-        if (hash(i + Math.floor(t * 6) * 7.1) < .006) { I = 1.25; ch = 42; }          // frost glints
-        const k = I * dim * fade;
-        R[i] = k * (.3 + .36 * (1 - g)); G[i] = k * (.98 - .22 * g); B[i] = k * (.8 - .16 * g); GL[i] = ch;
+    // the floor: dark green, lit by the blocks; later the orb's frost spreads across it
+    const wallUp = smooth(.9, 2.2, t), spread = easeOut((t - ic.t0) / 2.2), pulse = Math.exp(-Math.max(0, t - ic.t0) * 2.5) * (t > ic.t0 ? 1 : 0);
+    box(0, hz, W, H, (i, px, py) => {
+      const depth = (py - hz) / (H - hz);
+      let L = (.015 + .02 * noise(px * .03, py * .09)) * (.4 + .6 * depth), r = L * .35, g = L, b = L * .8, ch = -1;
+      const under = clamp(1 - Math.max(0, Math.abs(px - W / 2) - wl.nB * wl.bw / 2) / (wl.bw * .6));   // the blocks' glow on the floor
+      if (py > base - CH) { const gl = wallUp * under * Math.exp(-(py - base) / (H * .035)) * .3 * (.75 + .25 * noise(px * .02, t)); r += gl * .35; g += gl; b += gl * .82; }
+      if (spread > 0) {                                // frost: a widening ellipse of ice with cracks running out from where the orb landed
+        const ex = (px - ic.x) / (ic.rx * spread), ey = (py - ic.y) / (ic.ry * spread), q = Math.sqrt(ex * ex + ey * ey);
+        if (q < 1) {
+          const a = Math.atan2(ey, ex), n = fbm(px / S * 3.5, py / S * 7, 3);
+          let I = .2 + .34 * n + .32 * smooth(.8, 1, q) + .6 * pulse * (1 - q);
+          ch = -1;
+          if (Math.abs(Math.sin(a * 7 + n * 5)) < .07 + .05 * (1 - q)) { I = .8 + .2 * (1 - q); ch = Math.abs(ex) > Math.abs(ey) * 2.5 ? 45 : (ex * ey > 0 ? 92 : 47); }   // cracks
+          else if (Math.abs(Math.sin(q * 15 - n * 3)) < .06) { I += .14; ch = 126; }                                                          // frost rings
+          if ((q > .94 && hash(i + Math.floor(t * 8) * 3.3) < .3) || hash(i * 1.3 + Math.floor(t * 3)) < .012) { I = 1; ch = 42; }                                                            // the glittering edge
+          r = I * (.5 + .25 * (1 - q)); g = I; b = I * .95;
+        }
+      }
+      if (r + g + b > .02) { R[i] = r; G[i] = g; B[i] = b; GL[i] = ch; }
+    });
+    for (const s of this.shards) {                     // little ice spikes pop up as the frost reaches them
+      if (spread < s.q) continue;
+      const x = ic.x + Math.cos(s.a) * s.q * ic.rx * spread, y = ic.y + Math.sin(s.a) * s.q * ic.ry * spread;
+      if (y < base) continue;
+      const h = s.h * easeBack(clamp((spread - s.q) * 6));
+      lineSeg(x - CW * .6, y, x, y - h, 1, .5, 1, .9, .9, 47); lineSeg(x + CW * .6, y, x, y - h, 1, .5, 1, .9, .9, 92);
+      put(x, y - h, 1, 1, 1, 94);
+    }
+    // the ice blocks, each rising out of the floor (the middle one first), cloudy jade ice, brightest at the top
+    this.blocks.forEach((bk, k) => {
+      const e = easeBack((t - .9 - bk.d) / .8); if (e <= 0) return;
+      const bh = wl.bh * Math.min(1.04, e), yT = base - bh, last = k === wl.nB - 1, tp = wl.top, sd = wl.side;
+      box(bk.x, yT - tp, bk.x + wl.bw + (last ? sd : 0), base, (i, px, py) => {
+        let u = (px - bk.x) / wl.bw, v = (py - yT) / wl.bh, face = 0;
+        if (py < yT) {                                  // the top: a bright slanted strip
+          const k2 = (yT - py) / tp; if (u < k2 * .1 || u > 1 + k2 * .1 || k2 > 1) return; face = 1;
+        } else if (u > 1) {                             // the right side of the last block, in shade
+          const k2 = (u - 1) * wl.bw / sd; if (k2 > 1 || py < yT - k2 * tp || py > base - k2 * tp * .2) return; face = 2;
+        }
+        const vv = clamp(v), n = fbm(u * 3 + bk.s, v * 3.2, 3), m = .5 + .5 * Math.sin((u * 1.7 - v * 1.1) * 9 + n * 6 + t * .3);
+        const cl = smooth(.5, .72, fbm(u * 1.6 + bk.s * 2, v * 2 + 5, 2)) * (1 - vv);
+        let L = (.26 + .42 * Math.pow(1 - vv, 1.3)) * (.45 + .85 * n) + .26 * m * m * (1 - .6 * vv) + .38 * cl;
+        if (face === 1) L = .9 + .15 * n; else if (face === 2) L *= .5;
+        const edge = Math.min(u * wl.bw, (1 - u) * wl.bw, (py - yT)) / CW;
+        if (face === 0 && edge < 1.2) L = Math.max(L * .55, py - yT < CH * 1.2 ? 1 : 0);   // a dark seam at the sides, a bright rim along the top
+        if (hash(i + Math.floor(t * 5) * 7.1) < .004) L = 1.2;
+        const top = clamp(1 - v); L *= Math.min(1, e * 1.3);
+        R[i] = L * (.12 + .6 * top); G[i] = L * (.62 + .38 * top); B[i] = L * (.55 + .4 * top); GL[i] = -1;
       });
-    }
-    if (t > 1) for (let x = 0; x < W; x += CW) {      // a soft line of light along the ground
-      const I = .35 * smooth(1, 1.8, t) * (.7 + .3 * Math.sin(x * .05 - t * 2));
-      put(x, H - CH * .5, I * .4, I, I * .85, 95);
-    }
+    });
     const o2 = this.orb;
     if (t < 1.4) {                                     // the last jade sparks of the wing drift apart as Sage appears
       const A = Math.min(W * .44, H * .46), z = ZOOM.z0 * Math.exp((ZOOM.end - ZOOM.t0 + t) * ZOOM.rate);
       wingZoom(W / 2, H / 2, A, z, ZOOM.F, 1, 1 - smooth(.7, 1.4, t), ZOOM.end + t, .85 + t * .2);
     }
-    const fb = t - 3.1;                                // a ring of light as the healing orb is born
+    const fb = t - 3.1;                                // a ring of light as the orb is born
     if (fb > 0 && fb < .9) for (let k = 0; k < 48; k++) {
-      const a = k / 48 * 6.283, d = Math.min(W, H) * .24 * easeOut(fb / .9), I = 1 - fb / .9;
+      const a = k / 48 * 6.283, d = Math.min(W, H) * .2 * easeOut(fb / .9), I = 1 - fb / .9;
       put(o2.x + Math.cos(a) * d, o2.y + Math.sin(a) * d * .85, I * .6, I, I * .85, k % 2 ? 43 : 42);
     }
-    const o = this.orb, s = easeBack((t - 3.3) / .9);
-    if (s <= 0) return;
-    const rr = o.r * s * (1 + .025 * Math.sin(t * 2.6));
-    const rings = front => {                           // two thin tilted rings of sparkles; the far half passes behind the orb
-      for (const p of this.orbit) {
-        const a = p.a + t * (p.ring ? -.5 : .6), c = Math.cos(a), z = Math.sin(a), tl = p.ring ? .32 : -.24;
-        if ((z > 0) !== front) continue;
-        const x3 = c * rr * 1.42, y3 = z * rr * 1.42 * .2 + c * rr * 1.42 * tl, I = (front ? .95 : .35) * Math.min(1, s);
-        put(o.x + x3, o.y + y3, I * .55, I, I * .85, front ? (p.ring ? 42 : 43) : 46);
-      }
-    };
-    rings(false);
-    box(o.x - rr * 1.6, o.y - rr * 1.6, o.x + rr * 1.6, o.y + rr * 1.6, (i, px, py) => {
-      const dx = (px - o.x) / rr, dy = (py - o.y) / rr, d = Math.sqrt(dx * dx + dy * dy);
-      if (d >= 1) {                                    // a soft halo, fading out
-        if (d < 1.6) { const a = Math.pow((1.6 - d) / .6, 2) * .12 * Math.min(1, s); R[i] += a * .3; G[i] += a; B[i] += a * .8; }
-        return;
-      }
-      const nz = Math.sqrt(1 - d * d), core = Math.pow(1 - d, 2), fres = Math.pow(1 - nz, 2.4);
-      const swirl = .5 + .5 * Math.sin(Math.atan2(dy, dx) * 2 + d * 7 - t * 2.2);   // two arms of light turning inside
-      const spec = Math.pow(Math.max(0, -.4 * dx - .5 * dy + .77 * nz), 30);         // the highlight, top left
-      let L = .16 + .62 * core + .2 * swirl * (1 - d * .8) + .5 * fres;
-      if (d > .9) L = Math.max(L, 1);                  // a crisp bright rim
-      R[i] = L * .3 + spec + core * .35; G[i] = L * .98 + spec; B[i] = L * .78 + spec + core * .2; GL[i] = spec > .5 ? 64 : -1;
-    });
-    for (let k = 0; k < 7; k++) {                      // little sparkles inside
-      const a = k * .9 + t * (k % 2 ? .7 : -.5), d = (.25 + .5 * hash(k + 3)) * rr, I = .55 + .45 * Math.sin(t * 4 + k * 2);
-      put(o.x + Math.cos(a) * d, o.y + Math.sin(a) * d * .9, I, I, I, 43);
+    const s = easeBack((t - 3.3) / .9);
+    if (s > 0 && t < ic.t0) {                          // the orb glows above the wall, then drops and bursts into ice
+      const fall = clamp((t - 6.05) / (ic.t0 - 6.05)), y = o2.y + (ic.y - o2.y) * fall * fall, rr = o2.r * s * (1 + .025 * Math.sin(t * 2.6)) * (1 - .35 * fall);
+      this.drawOrb(t, o2.x, y, rr, Math.min(1, s), 1 - smooth(5.8, 6.2, t));
+      if (fall > 0) for (let k = 1; k < 6; k++) put(o2.x, y - rr - k * CH * 1.2 * fall, .4 / k, 1 / k, .85 / k, 124);   // a streak of light behind it
     }
-    rings(true);
-    for (const tp of [5.2, 6.8, 8.4, 10]) {            // healing pulses
-      const u = t - tp; if (u < 0 || u > 1.4) continue;
-      const pr = rr * 1.1 + u * S * .9, I = (1 - u / 1.4) * .6, n = Math.max(16, Math.floor(6.283 * pr / (CW * 1.6)));
-      for (let k = 0; k < n; k++) { const a = k / n * 6.283; put(o.x + Math.cos(a) * pr, o.y + Math.sin(a) * pr * .9, I * .5, I, I * .8, k % 2 ? 43 : 46); }
+    if (t > ic.t0 && t < ic.t0 + .7) {                 // the burst
+      const u = (t - ic.t0) / .7, n = 40;
+      for (let k = 0; k < n; k++) { const a = k / n * 6.283, d = easeOut(u) * ic.rx * .5; put(ic.x + Math.cos(a) * d, ic.y + Math.sin(a) * d * (ic.ry / ic.rx) - Math.sin(u * 3.14) * CH * 3 * Math.abs(Math.sin(a * 3)), 1 - u, 1 - u, 1 - u, k % 2 ? 42 : 43); }
     }
   }
 });
