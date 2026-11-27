@@ -32,6 +32,8 @@ body{color:var(--ink);font-family:var(--mono);-webkit-tap-highlight-color:transp
 #load{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);text-align:center;pointer-events:none;font:500 clamp(20px,1vw + 15px,28px) var(--hand);color:var(--ink);text-shadow:0 0 14px rgba(255,140,185,.55);white-space:nowrap}
 .zh{display:block;font-family:var(--zh);font-weight:400;font-size:.6em;letter-spacing:.14em;color:#f6cfe0;margin-top:.2em}
 #term .zh{font-size:.62em}
+#tap{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52 + 4.4em);transform:translateX(-50%);font:500 clamp(18px,1vw + 13px,24px) var(--hand);color:var(--ink);text-align:center;white-space:nowrap;pointer-events:none;text-shadow:0 0 14px rgba(255,140,185,.6);animation:softpulse 2.6s ease-in-out infinite}
+@keyframes softpulse{50%{opacity:.5}}
 #load .track{margin:.55em auto 0;width:min(52vw,240px);height:2px;border-radius:2px;background:rgba(255,186,212,.16);overflow:hidden}
 #load .track i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,#ff8fb8,#ffe3ee);box-shadow:0 0 10px #ff9cbf}
 #open{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 50% + min(50vw,50vh) * .52);transform:translateX(-50%);font:600 clamp(22px,1.3vw + 16px,32px) var(--hand);letter-spacing:.02em;color:#ffeaf2;background:rgba(255,150,190,.08);border:1px solid rgba(255,186,212,.4);border-radius:999px;padding:.3em 1.3em .38em;cursor:pointer;text-shadow:0 0 12px rgba(255,140,185,.7);animation:breathe 2.4s ease-in-out infinite;white-space:nowrap}
@@ -70,10 +72,13 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:3px}
 #open .zh,#replay .zh{color:#ffdbe9;letter-spacing:.32em;text-indent:.32em;margin-top:0}
 #open .zh::before,#replay .zh::before{content:"";display:block;width:2.6em;height:1px;margin:.2em auto .28em;background:linear-gradient(90deg,transparent,rgba(255,214,232,.85),transparent)}
 @media (prefers-reduced-motion: reduce){#open::after,#replay::after{animation:none;display:none}}
+/* captions sit on a soft, feathered dark oval so they read over any scene */
+#term{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:.4em 2em .5em;border-radius:999px;background:radial-gradient(ellipse at center,rgba(6,2,10,.66) 0%,rgba(6,2,10,.46) 48%,rgba(6,2,10,0) 74%);text-shadow:0 0 18px rgba(255,140,185,.5),0 2px 8px rgba(0,0,0,.95)}
 </style>
 <div id="stage"><canvas id="cv" role="img" aria-label="Animated ASCII birthday card for Qi Xuan"></canvas></div>
 <div id="term" aria-live="polite"></div>
 <div id="load" hidden><div>a little something for you</div><div class="zh">送你的一份小心意</div><div class="track"><i></i></div></div>
+<div id="tap" hidden>tap to let it bloom &#9835;<span class="zh">轻触屏幕，让它绽放</span></div>
 <button id="open" type="button" hidden>open your gift &#9825;<span class="zh">打开你的礼物</span></button>
 <button id="replay" type="button" hidden>watch again &#8634;<span class="zh">再看一次</span></button>
 <div id="fly" hidden><div class="route"><div><b>YYZ</b><small>Toronto</small></div><div><b>PVG</b><small>Shanghai &#19978;&#28023;</small></div></div><div class="track"><i></i><em>&#9992;&#xFE0E;</em></div><div class="info"></div></div>
@@ -133,7 +138,7 @@ const stage = document.getElementById('stage'), cv = document.getElementById('cv
 const term = document.getElementById('term'), openBtn = document.getElementById('open');
 const replayBtn = document.getElementById('replay'), finalEl = document.getElementById('final');
 const flyEl = document.getElementById('fly'), flyBar = flyEl.querySelector('.track i'), flyPlane = flyEl.querySelector('.track em'), flyInfo = flyEl.querySelector('.info');
-const loadEl = document.getElementById('load'), loadBar = loadEl.querySelector('i');
+const tapEl = document.getElementById('tap'), loadEl = document.getElementById('load'), loadBar = loadEl.querySelector('i');
 
 // ---------- grid state ----------
 let DPR = 1, W = 1, H = 1, WD = 1, HD = 1, GW = 6, GH = 10, COLS = 1, ROWS = 1, N = 1;
@@ -477,7 +482,7 @@ function ui() {
   const sc = SCENES[si];
   if (si > 0) opened = true;
   openBtn.hidden = true; flyEl.hidden = true;
-  if (!sc.boot) loadEl.hidden = true;
+  if (!sc.boot) { loadEl.hidden = true; tapEl.hidden = true; }
   replayBtn.hidden = true;                             // it appears near the end, after the last words
 }
 function go(k) {
@@ -520,8 +525,8 @@ function onAudioReady() {
   const sc = SCENES[si]; if (sc.onAudio) sc.onAudio();
 }
 function unlockAudio() {
-  audioInit(); if (!AC) return;
-  if (AC.state === 'running') onAudioReady(); else AC.resume().then(onAudioReady).catch(() => {});
+  audioInit(); if (!AC) { bootBloom(); return; }        // no sound at all on this device: bloom anyway
+  if (AC.state === 'running') onAudioReady(); else AC.resume().then(onAudioReady).catch(() => bootBloom());
 }
 for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) addEventListener(ev, unlockAudio, { passive: true });   // any first touch starts the music
 function openGift() {
@@ -536,12 +541,12 @@ openBtn.addEventListener('click', openGift);
 // replay goes all the way back to the gift, ready to be opened again
 function restart() {
   opened = false; bootReady = false; bootMel = false;
-  const b = SCENES[0]; delete b.exitAt; b.dur = Infinity;
+  const b = SCENES[0]; delete b.exitAt; delete b.bloomAt; b.dur = Infinity;
   go(0); if (audioOn && b.onAudio) b.onAudio();
 }
 replayBtn.addEventListener('click', restart);
 addEventListener('keydown', e => {
-  if ((e.key === 'Enter' || e.key === ' ') && SCENES[si].boot && st > 8.2 && !opened) { e.preventDefault(); openGift(); }
+  if ((e.key === 'Enter' || e.key === ' ') && SCENES[si].boot && !openBtn.hidden && !opened) { e.preventDefault(); openGift(); }
 });
 let rzT = 0;
 addEventListener('resize', () => {
@@ -576,6 +581,8 @@ const bar = (p, n = 22) => { const k = Math.round(p * n); return '#'.repeat(k) +
 
 // loading-screen music: the left hand rolls slowly through her theme's chords; the melody joins once it's ready
 let bootReady = false, bootMel = false;
+// the flower waits as a closed bud until the music starts, then unfurls with it
+function bootBloom() { const b = SCENES[0]; if (si === 0 && b.bloomAt === undefined) b.bloomAt = st; }
 function bootAmb(k, at) {
   const [c, mel] = THEME_A[k % 4];
   if (bootReady && k % 4 === 0) bootMel = true;
@@ -671,7 +678,7 @@ SCENES.push({
   boot: true, dur: Infinity, fadeIn: .3,           // the gift waits, however long it takes, until she opens it
   fadeOut: .7, capPos: 'top', glow: .65,
   bg0: [.022, .01, .026], bg1: [.03, .012, .03],
-  onAudio() { startLoop(4 * .85, bootAmb); },
+  onAudio() { startLoop(4 * .85, bootAmb); bootBloom(); },
   caps: [],
   cues: [[8.0, () => { bootReady = true; }]],
   dust(t) {
@@ -683,15 +690,17 @@ SCENES.push({
   },
   draw(t) {
     const p = bootP(t), cx = W / 2, cy = H / 2 - .06 * S;
-    openBtn.hidden = !(t > 8.2 && !opened);
-    loadEl.hidden = opened || t > 8.2;                // a thin bar fills under the flower, then the gift is ready
+    const waiting = this.bloomAt === undefined, b0 = waiting ? Infinity : Math.max(this.bloomAt, 2.4), u = t - b0, bloom = easeInOut(u / 3.2);
+    openBtn.hidden = !(t > 8.2 && u > 3.4 && !opened);          // the gift is ready once the bar is full and the flower has bloomed
+    loadEl.hidden = opened || t > 8.2;                // a thin bar fills under the flower
+    tapEl.hidden = !(waiting && t > 3.2 && !opened);  // until the music starts, a soft prompt to tap
     loadBar.style.width = (p * 100).toFixed(1) + '%';
     this.dust(t);
-    const grow = easeOut((t - .9) / 3.6);
-    if (t > .3 && grow < .02) { const I = .5 + .5 * Math.sin(t * 6); put(cx, cy, I, I * .85, I * .95, 42); }   // a single point of light
-    if (grow > 0) drawFlower({
-      x: cx, y: cy + S * .12, R: S * .58 * (.12 + .88 * grow), open: easeInOut((t - 2.4) / 3.0), fresh: 1 - smooth(1.8, 4.4, t),
-      yaw: t * .3, pitch: .25 + .62 * easeInOut((t - 2.4) / 3.0), alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
+    const bud = easeOut((t - .9) / 2.6), size = .12 + .4 * bud + .48 * easeOut(u / 3.2) + (waiting ? .025 * Math.sin(t * 2.2) * bud : 0);   // a bud that breathes while it waits
+    if (t > .3 && bud < .02) { const I = .5 + .5 * Math.sin(t * 6); put(cx, cy, I, I * .85, I * .95, 42); }   // a single point of light
+    if (bud > 0) drawFlower({
+      x: cx, y: cy + S * .12, R: S * .58 * size, open: bloom, fresh: 1 - smooth(.2, 2.6, u),
+      yaw: t * .3, pitch: .25 + .62 * bloom, alpha: 1, blow: this.exitAt === undefined ? 0 : (t - this.exitAt) / 1.1
     }, t);
   }
 });
